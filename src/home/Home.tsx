@@ -74,6 +74,10 @@ export default function Home({
 
   const [books, setBooks] = useState<Book[]>(() => cachedBooks() ?? [])
   useEffect(() => {
+    // Wait for the session probe: firing on mount (user null) and again once
+    // the account resolves fetched the list twice. The cached list paints in
+    // the meantime.
+    if (!authReady) return
     let alive = true
     fetchBooks().then(
       (list) => alive && setBooks(list),
@@ -83,7 +87,7 @@ export default function Home({
       alive = false
     }
     // Refetch when the account changes so learned/exposed are for this user.
-  }, [user])
+  }, [authReady, user])
 
   // Warm the round the Study button will open (App uses the same fallback), so
   // tapping it shows cards instead of waiting on a deal.

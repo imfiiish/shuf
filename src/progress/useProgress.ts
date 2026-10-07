@@ -46,7 +46,9 @@ export function useProgress(): { data: Progress | null; ready: boolean } {
   const [loaded, setLoaded] = useState<ProgressEntry | null>(readProgressCache)
 
   useEffect(() => {
-    if (!authReady) return
+    // No session (anonymous visitor) → there is no progress to fetch; syncing
+    // the effect on `uid` picks this up again once a guest/account exists.
+    if (!authReady || !user) return
     let alive = true
     fetchProgress(logicalDay()).then(
       (p) => {
@@ -64,7 +66,7 @@ export function useProgress(): { data: Progress | null; ready: boolean } {
     return () => {
       alive = false
     }
-  }, [authReady, uid])
+  }, [authReady, user, uid])
 
   // Never show another account's numbers: only the entry tagged with this uid.
   const data = loaded && loaded.uid === uid ? loaded.data : null
@@ -118,7 +120,7 @@ export function useDaily(from: string, to: string): Map<string, DayActivity> {
   })
 
   useEffect(() => {
-    if (!authReady) return
+    if (!authReady || !user) return
     let alive = true
     loadDaily(uid, from, to).then(
       (d) => {
@@ -129,7 +131,7 @@ export function useDaily(from: string, to: string): Map<string, DayActivity> {
     return () => {
       alive = false
     }
-  }, [authReady, uid, from, to, key])
+  }, [authReady, user, uid, from, to, key])
 
   // Adopt a cached range immediately when the month changes, then let the
   // effect revalidate it.

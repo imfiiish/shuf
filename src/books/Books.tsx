@@ -58,7 +58,7 @@ function Sliders() {
 export default function Books({ rail = false }: { rail?: boolean }) {
   const { lang, t } = useI18n()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, ready: authReady } = useAuth()
   const { settings, update } = useSettings()
   const [books, setBooks] = useState<Book[]>(() => cachedBooks() ?? [])
   const [tab, setTab] = useState<LangId>('en')
@@ -77,6 +77,10 @@ export default function Books({ rail = false }: { rail?: boolean }) {
   }
 
   useEffect(() => {
+    // Wait for the session probe, then refetch when the account changes so
+    // learned/exposed belong to the current user (a direct /books load would
+    // otherwise keep the pre-auth, anonymous list).
+    if (!authReady) return
     let alive = true
     fetchBooks().then(
       (list) => alive && setBooks(list),
@@ -85,7 +89,7 @@ export default function Books({ rail = false }: { rail?: boolean }) {
     return () => {
       alive = false
     }
-  }, [])
+  }, [authReady, user])
 
   const list = books.filter((b) => b.lang === tab)
   const picked = books.find((b) => b.id === pickedId) ?? list[0]
