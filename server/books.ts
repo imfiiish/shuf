@@ -320,6 +320,35 @@ const RELATIONS: Record<string, { exclude?: string[]; addon?: string[] }> = {
 
 const overlapCache = new Map<string, number>()
 
+// The dictionary is static for the life of the process, so a book's own total
+// and the coverage of its related lists can be memoised. Without this,
+// /api/books re-counts every book (and every add-on total) on each request —
+// dozens of full dictionary scans for data that never changes.
+const baseTotalCache = new Map<string, number>()
+function baseTotal(def: BookDef): Promise<number> {
+  const cached = baseTotalCache.get(def.id)
+  if (cached !== undefined) return Promise.resolve(cached)
+  return bookTotal(def).then((n) => {
+    baseTotalCache.set(def.id, n)
+    return n
+  })
+}
+
+const candidatesCache = new Map<string, Candidate[]>()
+/** `candidates()` is a pure function of the static RELATIONS map — memoise it. */
+async function relatedCandidates(
+  def: BookDef,
+  ids: string[],
+  kind: 'exclude' | 'addon',
+): Promise<Candidate[]> {
+  const key = `${def.id}:${kind}`
+  const cached = candidatesCache.get(key)
+  if (cached) return cached
+  const list = await candidates(def, ids, kind)
+  candidatesCache.set(key, list)
+  return list
+}
+
 /** Number of words shared by two books (cached — the dictionary is static). */
 async function overlap(a: BookDef, b: BookDef): Promise<number> {
   const key = a.id < b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`
@@ -351,7 +380,7 @@ async function candidates(
       const covers =
         kind === 'exclude'
           ? shared
-          : Math.max(0, (await bookTotal(other)) - shared)
+          : Math.max(0, (await baseTotal(other)) - shared)
       return { id, covers }
     }),
   )
@@ -438,21 +467,22 @@ export async function listBooks(
     BOOK_DEFS.map(async (def) => {
       const rel = RELATIONS[def.id] ?? {}
       const custom = customs.get(def.id) ?? EMPTY_CUSTOM
-      const [total, baseTotal, stats, excludes, addons] = await Promise.all([
-        bookTotal(def, custom),
-        bookTotal(def),
+      const customized = custom.exclude.length > 0 || custom.addon.length > 0
+      const [total, base, stats, excludes, addons] = await Promise.all([
+        customized ? bookTotal(def, custom) : baseTotal(def),
+        baseTotal(def),
         userId
           ? bookStats(userId, def, custom)
           : Promise.resolve({ learned: 0, exposed: 0 }),
-        candidates(def, rel.exclude ?? [], 'exclude'),
-        candidates(def, rel.addon ?? [], 'addon'),
+        relatedCandidates(def, rel.exclude ?? [], 'exclude'),
+        relatedCandidates(def, rel.addon ?? [], 'addon'),
       ])
       return {
         id: def.id,
         lang: def.lang,
         name: def.name,
         total,
-        baseTotal,
+        baseTotal: base,
         learned: stats.learned,
         exposed: stats.exposed,
         disabled: !!def.disabled,

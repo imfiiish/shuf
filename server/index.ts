@@ -3,6 +3,7 @@ import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { compress } from 'hono/compress'
+import { etag } from 'hono/etag'
 import { resolve } from 'node:path'
 import auth, { currentUserId } from './auth.ts'
 import {
@@ -85,6 +86,27 @@ app.use(
 // /audio, so it is deliberately left alone.
 app.use('/api/*', compress())
 
+// Revalidate cheaply: ETag on the JSON, and a cache policy that keeps
+// per-account reads out of shared caches while letting the public language
+// list sit in the browser. Registered after compress() so the tag hashes the
+// uncompressed body; compress() preserves the header on the way out.
+app.use('/api/*', etag())
+app.use('/api/*', async (c, next) => {
+  await next()
+  if (c.res.status !== 200 || c.res.headers.has('cache-control')) return
+  const path = c.req.path
+  if (path === '/api/languages') {
+    c.res.headers.set(
+      'cache-control',
+      'public, max-age=3600, stale-while-revalidate=86400',
+    )
+  } else if (path.startsWith('/api/auth')) {
+    c.res.headers.set('cache-control', 'no-store')
+  } else {
+    c.res.headers.set('cache-control', 'private, no-cache')
+  }
+})
+
 app.get('/api/health', async (c) => {
   try {
     await pool.query('SELECT 1')
@@ -101,15 +123,20 @@ app.route('/api/settings', settings)
 app.route('/api/progress', progress)
 
 /** Languages that actually have words in the dictionary. */
+let languagesCache: { code: string; count: number }[] | null = null
 app.get('/api/languages', async (c) => {
-  const { rows } = await pool.query<{ code: string; count: string }>(
-    `SELECT l.code, count(w.*)::text AS count
-       FROM languages l
-       LEFT JOIN words w ON w.lang = l.code
-      GROUP BY l.code
-      ORDER BY l.code`,
-  )
-  return c.json(rows.map((r) => ({ code: r.code, count: Number(r.count) })))
+  // The dictionary is static, so the aggregate is computed once per process.
+  if (!languagesCache) {
+    const { rows } = await pool.query<{ code: string; count: string }>(
+      `SELECT l.code, count(w.*)::text AS count
+         FROM languages l
+         LEFT JOIN words w ON w.lang = l.code
+        GROUP BY l.code
+        ORDER BY l.code`,
+    )
+    languagesCache = rows.map((r) => ({ code: r.code, count: Number(r.count) }))
+  }
+  return c.json(languagesCache)
 })
 
 function toIdList(v: unknown): string[] {
@@ -189,6 +216,31 @@ app.get('/api/deck', async (c) => {
 })
 
 // ---- Built SPA (production) -----------------------------------------------
+// Vite writes content-hashed names into dist/assets ("index-DHA6PBVa.js"), so
+// those files can be cached forever. The HTML shell must revalidate so a
+// deploy's new hashes are picked up. Without this the CDN has to invent a TTL
+// (Cloudflare's default is only 4 hours).
+const HASHED =
+  /[.-][0-9a-zA-Z_-]{8,}\.(?:js|css|woff2?|ttf|otf|png|jpe?g|gif|svg|webp|avif|ico)$/
+
+// Everything Vite emits under /assets carries a content hash in its name, so
+// it can be cached forever; root files (favicon, manifest, robots) and the
+// HTML shell revalidate instead.
+const isHashedAsset = (path: string): boolean =>
+  path.startsWith('/assets/') && HASHED.test(path)
+
+// Must run before the static handler: the Node adapter finalises the response
+// inside serveStatic, so a cache header set in its onFound hook is dropped.
+app.use('*', async (c, next) => {
+  const path = c.req.path
+  if (path.startsWith('/api') || path.startsWith('/audio')) return next()
+  c.header(
+    'cache-control',
+    isHashedAsset(path) ? 'public, max-age=31536000, immutable' : 'no-cache',
+  )
+  return next()
+})
+
 // Registered last so /api and /audio win; unknown paths there still 404
 // instead of falling through to index.html.
 app.use('*', async (c, next) => {
@@ -199,6 +251,12 @@ app.use('*', async (c, next) => {
 app.get('*', async (c, next) => {
   const path = c.req.path
   if (path.startsWith('/api') || path.startsWith('/audio')) return next()
+  // A path that names a file (or lives under /assets) is a real miss: 404 it
+  // instead of handing it the SPA shell, otherwise the CDN caches an HTML
+  // body under a script/style/robots URL.
+  if (path.startsWith('/assets') || /\.[a-z0-9]+$/i.test(path)) {
+    return c.notFound()
+  }
   return serveStatic({ path: resolve(DIST_DIR, 'index.html') })(c, next)
 })
 
