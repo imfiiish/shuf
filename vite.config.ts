@@ -7,6 +7,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': 'http://localhost:8787',
+      // Pronunciation audio is served by the Hono API out of $AUDIO_DIR.
+      '/audio': 'http://localhost:8787',
     },
   },
 })

@@ -1,6 +1,8 @@
 import './env.ts'
 import { serve } from '@hono/node-server'
+import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
+import { resolve } from 'node:path'
 import auth, { currentUserId } from './auth.ts'
 import {
   BOOK_BY_ID,
@@ -27,6 +29,37 @@ app.onError((err, c) => {
   console.error(err)
   return c.json({ error: 'internal_error' }, 500)
 })
+
+// Pronunciation audio. $AUDIO_DIR holds <lang>/<voice>/<file>; a relative path
+// resolves against the repo root. Never hard-code a machine path here — set
+// AUDIO_DIR in the gitignored .env instead.
+const AUDIO_DIR = resolve(
+  import.meta.dirname,
+  '..',
+  process.env.AUDIO_DIR ?? 'audio',
+)
+const AUDIO_TYPES: Record<string, string> = {
+  wav: 'audio/wav',
+  mp3: 'audio/mpeg',
+  ogg: 'audio/ogg',
+  m4a: 'audio/mp4',
+}
+// hono/utils/mime has no .wav/.ogg entry, so serveStatic falls back to
+// application/octet-stream (which makes browsers download). Fix it up.
+app.use('/audio/*', async (c, next) => {
+  await next()
+  if (c.res.headers.get('content-type') === 'application/octet-stream') {
+    const ext = c.req.path.split('.').pop()?.toLowerCase() ?? ''
+    if (AUDIO_TYPES[ext]) c.res.headers.set('content-type', AUDIO_TYPES[ext])
+  }
+})
+app.use(
+  '/audio/*',
+  serveStatic({
+    root: AUDIO_DIR,
+    rewriteRequestPath: (path) => path.replace(/^\/audio/, ''),
+  }),
+)
 
 app.get('/api/health', (c) => c.json({ ok: true }))
 
