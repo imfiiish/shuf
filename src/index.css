@@ -185,3 +185,9 @@ button {
   font-size: 0.9rem;
   white-space: nowrap;
 }
+
+/* Suspense fallback for a code-split route. Reserves the viewport height so
+   the nav rail does not jump when the chunk lands. */
+.route-loading {
+  min-height: 100vh;
+}

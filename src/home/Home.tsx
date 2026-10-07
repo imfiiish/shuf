@@ -1,9 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { useAuth } from '../auth'
 import { useI18n } from '../i18n'
-import { GoalGauge } from '../progress/ResultCharts'
-import { Sunburst } from '../progress/ProgressCharts'
-import { burstFrom } from '../progress/progressBurstData'
 import { useProgress } from '../progress/useProgress'
 import { useSettings } from '../settings/context'
 import { getActiveBook } from '../books/active'
@@ -12,6 +9,10 @@ import { LANGS, type Book } from '../books/data'
 import { LANG_COLOR } from '../books/langColor'
 import UserChip from '../UserChip'
 import './home.css'
+
+// The rail charts pull in the Progress page's chart code; load them after the
+// landing page so they are not on the critical path.
+const HomeRail = lazy(() => import('./HomeRail'))
 
 const fmt = (n: number) => n.toLocaleString('en-US')
 
@@ -59,8 +60,6 @@ export default function Home({
   const { user, logout } = useAuth()
   const { settings } = useSettings()
   const { data } = useProgress(1)
-  const gauge = { value: data?.today.learned ?? 0, goal: settings.dailyGoal }
-  const burst = useMemo(() => burstFrom(data?.languages ?? []), [data])
 
   const [books, setBooks] = useState<Book[]>(() => cachedBooks() ?? [])
   useEffect(() => {
@@ -176,13 +175,20 @@ export default function Home({
         </main>
 
         <aside className="home-rail">
-          <section className="home-card">
-            <GoalGauge value={gauge.value} goal={gauge.goal} />
-          </section>
-
-          <section className="home-card">
-            <Sunburst burst={burst} legend={false} />
-          </section>
+          <Suspense
+            fallback={
+              <>
+                <section className="home-card home-rail-skel" aria-hidden="true" />
+                <section className="home-card home-rail-skel" aria-hidden="true" />
+              </>
+            }
+          >
+            <HomeRail
+              value={data?.today.learned ?? 0}
+              goal={settings.dailyGoal}
+              languages={data?.languages ?? []}
+            />
+          </Suspense>
         </aside>
       </div>
     </div>

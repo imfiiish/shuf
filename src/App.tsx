@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import {
   Navigate,
   Route,
@@ -10,12 +11,16 @@ import CapsuleNav, { type CapsuleNavItem } from './CapsuleNav'
 import { DEFAULT_BOOK } from './books/active'
 import { useSettings } from './settings/context'
 import Home from './home/Home'
-import Progress from './progress/Progress'
-import Books from './books/Books'
-import Settings from './settings/Settings'
-import Flip from './flip/Flip'
-import Results from './results/Results'
-import Login from './login/Login'
+
+// Home is the default route, so it stays eager. Every other route is split
+// into its own chunk and fetched on navigation, keeping the landing page's
+// initial JS (and CSS) small.
+const Progress = lazy(() => import('./progress/Progress'))
+const Books = lazy(() => import('./books/Books'))
+const Settings = lazy(() => import('./settings/Settings'))
+const Flip = lazy(() => import('./flip/Flip'))
+const Results = lazy(() => import('./results/Results'))
+const Login = lazy(() => import('./login/Login'))
 
 function HomeIcon() {
   return (
@@ -176,29 +181,31 @@ function App() {
         />
       )}
 
-      <Routes>
-        <Route path="/" element={home} />
-        <Route path="/login" element={pageFor(loginFrom)} />
-        <Route path="/progress" element={<Progress rail />} />
-        <Route path="/books" element={<Books rail />} />
-        <Route path="/settings" element={<Settings rail />} />
-        <Route path="/study" element={<StudyRedirect />} />
-        <Route path="/study/:book" element={<StudyRoute />} />
-        <Route
-          path="/results"
-          element={
-            <Results
-              onContinue={() => navigate(`/study/${activeBook}`)}
-              onStop={() => navigate('/')}
-            />
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={<div className="route-loading" />}>
+        <Routes>
+          <Route path="/" element={home} />
+          <Route path="/login" element={pageFor(loginFrom)} />
+          <Route path="/progress" element={<Progress rail />} />
+          <Route path="/books" element={<Books rail />} />
+          <Route path="/settings" element={<Settings rail />} />
+          <Route path="/study" element={<StudyRedirect />} />
+          <Route path="/study/:book" element={<StudyRoute />} />
+          <Route
+            path="/results"
+            element={
+              <Results
+                onContinue={() => navigate(`/study/${activeBook}`)}
+                onStop={() => navigate('/')}
+              />
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
 
-      {pathname === '/login' && (
-        <Login onClose={() => navigate(loginFrom, { replace: true })} />
-      )}
+        {pathname === '/login' && (
+          <Login onClose={() => navigate(loginFrom, { replace: true })} />
+        )}
+      </Suspense>
     </>
   )
 }

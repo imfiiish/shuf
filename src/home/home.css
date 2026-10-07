@@ -104,6 +104,13 @@
   max-width: 360px;
 }
 
+/* Suspense placeholder while the rail chunk loads; keeps the rail from
+   collapsing and shifting the page. */
+.home-rail-skel {
+  min-height: 200px;
+  opacity: 0.6;
+}
+
 /* ---- left column: the wordbook being studied (borrows the Wordbooks sheet) ---- */
 .home-learn {
   gap: 20px;
