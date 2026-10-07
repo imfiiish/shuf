@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Modal from '../components/Modal'
+import { useAuth } from '../auth'
 import { useI18n } from '../i18n'
 import { cachedBooks, fetchBooks, saveCustom } from '../api/books'
 import { LANGS, type Book, type LangId } from './data'
@@ -57,6 +58,7 @@ function Sliders() {
 export default function Books({ rail = false }: { rail?: boolean }) {
   const { lang, t } = useI18n()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const { settings, update } = useSettings()
   const [books, setBooks] = useState<Book[]>(() => cachedBooks() ?? [])
   const [tab, setTab] = useState<LangId>('en')
@@ -147,6 +149,11 @@ export default function Books({ rail = false }: { rail?: boolean }) {
     persist(cut, next)
   }
   const openDialog = () => {
+    // Customization is saved to the account, so a guest must sign in first.
+    if (!user || user.isGuest) {
+      navigate('/login', { state: { from: '/books' } })
+      return
+    }
     setCut(picked.custom?.exclude ?? [])
     setAdded(picked.custom?.addon ?? [])
     setDialog(true)

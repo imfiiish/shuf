@@ -40,6 +40,9 @@ export default function Flip({
   const { t } = useI18n()
   const { ready, user, enterAsGuest } = useAuth()
   const shown = variant ?? 'default'
+  // Milestones are remembered per account, so a switch does not suppress the
+  // next Results (see results/milestone.ts).
+  const uid = user?.id ?? null
 
   const [deck, setDeck] = useState<CardData[]>([])
   const [center, setCenter] = useState(0)
@@ -218,8 +221,8 @@ export default function Flip({
     try {
       const p = await fetchProgress(day, 1)
       const reached = reachedMilestone(p.today.learned)
-      if (reached > shownMilestone(day)) {
-        setShownMilestone(day, reached)
+      if (reached > shownMilestone(day, uid)) {
+        setShownMilestone(day, reached, uid)
         onFinish?.()
         return
       }
@@ -227,7 +230,7 @@ export default function Flip({
       // network error: just continue
     }
     await nextRound()
-  }, [flushProgress, onFinish, nextRound])
+  }, [flushProgress, onFinish, nextRound, uid])
 
   // wheel: down / right -> next, up / left -> previous
   useWheelNav(go)

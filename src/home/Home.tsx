@@ -97,14 +97,11 @@ export default function Home({
           <p className="home-desc">{t('scene.nav.homeSub')}</p>
         </div>
         <UserChip
-          name={
-            user
-              ? user.isGuest
-                ? t('user.guest')
-                : user.displayName
-              : t('user.signIn')
-          }
-          signedIn={!!user}
+          // A guest owns progress but is not an account: it looks signed out.
+          // Clicking opens the login/register overlay, which upgrades the guest
+          // in place (same id), so the progress collected so far is kept.
+          name={user && !user.isGuest ? user.displayName : t('user.signIn')}
+          signedIn={!!user && !user.isGuest}
           logoutLabel={t('user.logout')}
           onClick={onLogin}
           onLogout={() => void logout()}
