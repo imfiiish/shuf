@@ -5,12 +5,28 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>shuf-flip</title>
-    <!-- Paint the dark theme before the app CSS loads (avoids a white flash). -->
+    <!-- First-paint theme. The app CSS is async, so the browser would otherwise
+         paint its white default canvas / overscroll / scrollbars before it.
+         `color-scheme` tells the UA to use dark chrome immediately, and the
+         inline background matches src/index.css so there is no jump when the
+         stylesheet lands. Keep these colors in sync with the body gradient. -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#0d1f19" />
     <style>
-      html,
+      html {
+        color-scheme: dark;
+        /* Fallback for the overscroll gutter (iOS rubber-band, scrollbars). */
+        background-color: #0d1f19;
+      }
       body {
         margin: 0;
-        background: #0d1f19;
+        min-height: 100vh;
+        background: linear-gradient(
+          160deg,
+          #14332a 0%,
+          #0d1f19 55%,
+          #10251d 100%
+        );
         color: #eef4ee;
       }
     </style>
