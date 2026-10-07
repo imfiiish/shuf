@@ -1,0 +1,13 @@
+# Reverse proxy in front of the app, with automatic HTTPS.
+#
+# Set SITE_ADDRESS in the compose .env to your domain: Caddy fetches a Let's
+# Encrypt certificate automatically once 80/443 are reachable. For a hostname
+# like `localhost` or a bare IP it falls back to its internal CA — trust it
+# with `docker compose -f docker-compose.prod.yml exec caddy caddy trust`.
+#
+# The app already gzips /api; `encode` covers the static SPA assets too.
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	reverse_proxy app:3000
+}

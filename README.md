@@ -18,6 +18,43 @@ npm run dev        # Vite (5173) + Hono API (8787) together
 The Vite dev server proxies `/api/*` to the Hono server, so the front end
 calls same-origin paths (`fetch('/api/books')`).
 
+## Production
+
+One process serves everything — the built SPA, `/api` and `/audio` — so
+there is no separate web server to run.
+
+With Docker (app + Postgres, audio bind-mounted from `../audio`):
+
+```bash
+POSTGRES_PASSWORD=change-me \
+  docker compose -f docker-compose.prod.yml up -d --build
+# -> http://localhost:3000
+```
+
+- `docker-compose.prod.yml` runs its own project (`shuf-flip-prod`), so its
+database volume is separate from the dev one. Override `APP_PORT`,
+`AUDIO_HOST_DIR` and `POSTGRES_PASSWORD` in a `.env` next to the compose file.
+- Re-run the same `up -d --build` after a code change (the db is untouched);
+  `up -d` alone is enough after only an `.env` / audio change.
+- `npm run prod:logs` / `npm run prod:down`.
+- HTTPS: a `caddy` service is included. Set `SITE_ADDRESS` in the `.env` to
+  your domain — Caddy gets a Let's Encrypt certificate automatically once 80/443
+  are reachable — and the app itself is then bound to loopback only. For
+  `localhost` or an IP, Caddy uses its internal CA: trust it with
+  `npm run prod:trust`. HSTS is sent by Caddy; the session cookie is marked
+  `secure` because `NODE_ENV=production`.
+
+Without Docker, on the same `$AUDIO_DIR` machine:
+
+```bash
+npm ci && npm run build
+PORT=3000 npm run start   # node runs the .ts server directly
+```
+
+`AUDIO_DIR` must point at a directory of `<lang>/<voice>/<file>` recordings
+(defaults to `./audio`; this repo keeps them outside at `../audio`). Missing
+files simply play nothing — the app never blocks on audio.
+
 ## Scripts
 
 - `npm run dev` — start web + api
@@ -26,6 +63,7 @@ calls same-origin paths (`fetch('/api/books')`).
 - `npm run build` — type-check and build
 - `npm run preview` — preview production build
 - `npm run lint` — run oxlint
+- `npm run start` — run the server (serves `dist` + API; no build step)
 
 ### Database
 
@@ -36,18 +74,20 @@ calls same-origin paths (`fetch('/api/books')`).
 - `npm run db:dump` / `npm run db:restore` — dump / restore `db/dump.sql`
 - `npm run db:logs` — follow DB logs
 
-The schema and data come from `db/dump.sql`, which is loaded by the Postgres
-container on first start (empty volume). It is the fishDict dictionary dump and
-owns the `public` schema. `db/schema.sql` adds the app-owned tables
-(accounts/sessions/progress) in the separate `app` schema, and is applied after
-the dump on first start, or with `npm run db:schema` on an existing DB. Keeping
-them apart means pgweb shows `public` (dictionary) and `app` (app state) as two
-groups. The connection sets `search_path = app, public` (both in `db/schema.sql`
-and the pool in `server/db.ts`), so unqualified queries resolve either way;
-`npm run db:schema` also relocates tables from older databases that kept them in
-`public`.
+The dictionary comes from `db/dump.sql`, loaded by the Postgres container on
+first start (empty volume); it owns the `public` schema. The app-owned tables
+(accounts/sessions/progress) live in the separate `app` schema and are managed
+by `db/migrations/*.sql`: the server applies pending migrations on start-up
+(`server/migrate.ts`), so a fresh volume plus a server start is enough, and a
+schema change is just a new file there. The connection sets
+`search_path = app, public` (in the pool, `server/db.ts`), so unqualified
+queries resolve either way.
 
-- `npm run db:schema` — (re)apply `db/schema.sql` to the running DB
+- `npm run db:migrate` — apply pending migrations from the host
+- `npm run prod:migrate` — same, inside the running app container
+
+Add a change as `db/migrations/<number>_<name>.sql` (forward-only). A later
+`up -d --build` applies it on start.
 
 ## Accounts: users & guests
 

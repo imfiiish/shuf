@@ -1,0 +1,12 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+# The dictionary is loaded by Postgres from the bind-mount, not the app image.
+db/dump.sql
+docs
+*.md
+.oxlintrc.json

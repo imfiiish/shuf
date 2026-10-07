@@ -18,6 +18,7 @@ import {
 } from './books.ts'
 import { pool } from './db.ts'
 import { startMaintenance } from './maintenance.ts'
+import { migrateWithRetry } from './migrate.ts'
 import progress from './progress.ts'
 import settings from './settings.ts'
 import study from './study.ts'
@@ -32,6 +33,16 @@ app.onError((err, c) => {
   return c.json({ error: 'internal_error' }, 500)
 })
 
+// Basic hardening headers for every response. HSTS is left to the TLS
+// terminator (reverse proxy), which is the only place that knows the scheme.
+app.use('*', async (c, next) => {
+  await next()
+  const h = c.res.headers
+  h.set('x-content-type-options', 'nosniff')
+  h.set('x-frame-options', 'DENY')
+  h.set('referrer-policy', 'same-origin')
+})
+
 // Pronunciation audio. $AUDIO_DIR holds <lang>/<voice>/<file>; a relative path
 // resolves against the repo root. Never hard-code a machine path here — set
 // AUDIO_DIR in the gitignored .env instead.
@@ -40,6 +51,8 @@ const AUDIO_DIR = resolve(
   '..',
   process.env.AUDIO_DIR ?? 'audio',
 )
+/** Vite build output, served by this same process in production. */
+const DIST_DIR = resolve(import.meta.dirname, '..', 'dist')
 const AUDIO_TYPES: Record<string, string> = {
   wav: 'audio/wav',
   mp3: 'audio/mpeg',
@@ -72,7 +85,15 @@ app.use(
 // /audio, so it is deliberately left alone.
 app.use('/api/*', compress())
 
-app.get('/api/health', (c) => c.json({ ok: true }))
+app.get('/api/health', async (c) => {
+  try {
+    await pool.query('SELECT 1')
+    return c.json({ ok: true })
+  } catch (err) {
+    console.error('[health]', err)
+    return c.json({ ok: false }, 503)
+  }
+})
 
 app.route('/api/auth', auth)
 app.route('/api/study', study)
@@ -167,11 +188,44 @@ app.get('/api/deck', async (c) => {
   })
 })
 
-const port = Number(process.env.PORT ?? 8787)
+// ---- Built SPA (production) -----------------------------------------------
+// Registered last so /api and /audio win; unknown paths there still 404
+// instead of falling through to index.html.
+app.use('*', async (c, next) => {
+  const path = c.req.path
+  if (path.startsWith('/api') || path.startsWith('/audio')) return next()
+  return serveStatic({ root: DIST_DIR })(c, next)
+})
+app.get('*', async (c, next) => {
+  const path = c.req.path
+  if (path.startsWith('/api') || path.startsWith('/audio')) return next()
+  return serveStatic({ path: resolve(DIST_DIR, 'index.html') })(c, next)
+})
 
-serve({ fetch: app.fetch, port }, (info) => {
-  console.log(`shuf-flip API listening on http://localhost:${info.port}`)
+// Bring the app schema up to date before accepting traffic.
+await migrateWithRetry()
+
+const port = Number(process.env.PORT ?? 8787)
+const hostname = process.env.HOST ?? '0.0.0.0'
+
+const server = serve({ fetch: app.fetch, port, hostname }, (info) => {
+  console.log(`shuf-flip listening on http://${hostname}:${info.port}`)
 })
 
 // Daily housekeeping at the logical-day rollover (see maintenance.ts).
 startMaintenance()
+
+// Close the server and the pool on SIGTERM/SIGINT so a container stop or a
+// deploy is not a hard kill; force-exit if connections refuse to drain.
+let closing = false
+function shutdown(signal: string): void {
+  if (closing) return
+  closing = true
+  console.log(`[server] ${signal}: shutting down`)
+  server.close(() => {
+    void pool.end().finally(() => process.exit(0))
+  })
+  setTimeout(() => process.exit(1), 10_000).unref()
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))

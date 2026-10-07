@@ -1,0 +1,81 @@
+# Production stack: app (built SPA + /api + /audio), Postgres, and Caddy for
+# HTTPS. Run from the repo root:
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Re-run the same command after changing code (it rebuilds the app image; the
+# db and its data are untouched). After changing only .env / audio, `up -d`
+# is enough.
+#
+# Configure in a .env next to this file:
+#   POSTGRES_PASSWORD=change-me      # database password
+#   SITE_ADDRESS=shuf.example.com    # domain Caddy gets a certificate for
+#                                    # (default localhost -> internal CA)
+#   APP_PORT=3000                    # loopback-only debug port for the raw app
+#   HTTP_PORT=80 / HTTPS_PORT=443
+#   AUDIO_HOST_DIR=../audio          # host dir mounted read-only at /audio
+#
+# A separate compose project (`shuf-flip-prod`) keeps this DB volume apart from
+# the dev one. The app schema is created/migrated by server/migrate.ts on
+# start-up; Postgres only loads the dictionary.
+name: shuf-flip-prod
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shuf
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shuf}
+      POSTGRES_DB: shuf
+    volumes:
+      - shuf-flip-pgdata:/var/lib/postgresql/data
+      - ./db/dump.sql:/docker-entrypoint-initdb.d/dump.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shuf -d shuf"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: "3000"
+      DATABASE_URL: postgres://shuf:${POSTGRES_PASSWORD:-shuf}@db:5432/shuf
+      AUDIO_DIR: /audio
+    volumes:
+      - ${AUDIO_HOST_DIR:-../audio}:/audio:ro
+    # Loopback only: the public entry point is Caddy.
+    ports:
+      - "127.0.0.1:${APP_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  shuf-flip-pgdata:
+  caddy-data:
+  caddy-config:
