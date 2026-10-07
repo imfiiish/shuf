@@ -14,22 +14,30 @@ export function useProgress(days = 30): {
   ready: boolean
 } {
   const { user, ready: authReady } = useAuth()
-  const [data, setData] = useState<Progress | null>(null)
+  // Tag the payload with the account it belongs to, so when the account
+  // changes (sign out, switch, guest) the old numbers are dropped right away
+  // instead of lingering until a refresh.
+  const uid = user?.id ?? null
+  const [loaded, setLoaded] = useState<{
+    uid: number | null
+    data: Progress
+  } | null>(null)
 
   useEffect(() => {
     if (!authReady) return
     let alive = true
     fetchProgress(logicalDay(), days).then(
       (p) => {
-        if (alive) setData(p)
+        if (alive) setLoaded({ uid, data: p })
       },
       () => {},
     )
     return () => {
       alive = false
     }
-  }, [authReady, user, days])
+  }, [authReady, uid, days])
 
+  const data = loaded && loaded.uid === uid ? loaded.data : null
   return { data, ready: data !== null }
 }
 
@@ -53,24 +61,32 @@ function loadDaily(
   return p
 }
 
+/** Shared empty result so the memo below stays stable while unloaded. */
+const EMPTY_DAYS: DayActivity[] = []
+
 /** Per-day activity for a date range, keyed by logical day (calendar). */
 export function useDaily(from: string, to: string): Map<string, DayActivity> {
   const { user, ready: authReady } = useAuth()
-  const [days, setDays] = useState<DayActivity[]>([])
+  const uid = user?.id ?? null
+  const [loaded, setLoaded] = useState<{
+    uid: number | null
+    days: DayActivity[]
+  } | null>(null)
 
   useEffect(() => {
     if (!authReady) return
     let alive = true
-    loadDaily(user?.id ?? null, from, to).then(
+    loadDaily(uid, from, to).then(
       (d) => {
-        if (alive) setDays(d)
+        if (alive) setLoaded({ uid, days: d })
       },
       () => {},
     )
     return () => {
       alive = false
     }
-  }, [authReady, user, from, to])
+  }, [authReady, uid, from, to])
 
+  const days = loaded && loaded.uid === uid ? loaded.days : EMPTY_DAYS
   return useMemo(() => new Map(days.map((d) => [d.day, d])), [days])
 }
