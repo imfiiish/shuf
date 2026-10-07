@@ -180,6 +180,19 @@ async function currentRoundSeq(userId: number, book: string): Promise<number> {
   return Number(rows[0]?.round_seq ?? 0)
 }
 
+/** Distinct words revealed today (the daily-goal numerator). Returned with
+ *  the progress write so the client can decide on a milestone without a
+ *  separate /api/progress round-trip on every "next". */
+async function learnedToday(userId: number, day: string): Promise<number> {
+  const { rows } = await pool.query<{ learned: number }>(
+    `SELECT (count(*) FILTER (WHERE met > 0))::int AS learned
+       FROM user_word_daily
+      WHERE user_id = $1 AND day = $2::date`,
+    [userId, day],
+  )
+  return rows[0]?.learned ?? 0
+}
+
 /**
  * Record what the user saw / learned for the round just played.
  * body: { book, day?, exposed: string[], met: { [word]: count } }
@@ -210,7 +223,13 @@ study.put('/progress', async (c) => {
   const metSum = met.reduce((sum, m) => sum + m.n, 0)
   const lastWord = typeof body?.lastWord === 'string' ? body.lastWord : null
   if (exposed.length === 0 && met.length === 0 && !lastWord) {
-    return c.json({ ok: true, day, exposed: 0, met: 0 })
+    return c.json({
+      ok: true,
+      day,
+      exposed: 0,
+      met: 0,
+      learned: await learnedToday(userId, day),
+    })
   }
 
   const client = await pool.connect()
@@ -303,6 +322,7 @@ study.put('/progress', async (c) => {
     roundSeq,
     exposed: exposedCount,
     met: metSum,
+    learned: await learnedToday(userId, day),
   })
 })
 

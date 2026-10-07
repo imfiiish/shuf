@@ -2,6 +2,7 @@ import './env.ts'
 import { serve } from '@hono/node-server'
 import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
+import { compress } from 'hono/compress'
 import { resolve } from 'node:path'
 import auth, { currentUserId } from './auth.ts'
 import {
@@ -48,6 +49,11 @@ const AUDIO_TYPES: Record<string, string> = {
 // application/octet-stream (which makes browsers download). Fix it up.
 app.use('/audio/*', async (c, next) => {
   await next()
+  // Recordings never change, so let the browser keep them across sessions
+  // instead of falling back to heuristic caching.
+  if (c.res.status === 200) {
+    c.res.headers.set('cache-control', 'public, max-age=31536000, immutable')
+  }
   if (c.res.headers.get('content-type') === 'application/octet-stream') {
     const ext = c.req.path.split('.').pop()?.toLowerCase() ?? ''
     if (AUDIO_TYPES[ext]) c.res.headers.set('content-type', AUDIO_TYPES[ext])
@@ -60,6 +66,10 @@ app.use(
     rewriteRequestPath: (path) => path.replace(/^\/audio/, ''),
   }),
 )
+
+// gzip/deflate the JSON API. Audio is already compressed and served from
+// /audio, so it is deliberately left alone.
+app.use('/api/*', compress())
 
 app.get('/api/health', (c) => c.json({ ok: true }))
 
