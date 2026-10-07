@@ -129,7 +129,9 @@ study.post('/round', async (c) => {
     cascade = advance(cascade, words, params)
     generated = true
   }
-  await saveCascade(userId, book, cascade)
+  // Only persist when the round actually changed: a reload (or a warm prefetch)
+  // returns the current round and would otherwise rewrite the row every time.
+  if (generated) await saveCascade(userId, book, cascade)
 
   const { rows: lastRows } = await pool.query<{ last_word: string | null }>(
     `SELECT last_word FROM cascades WHERE user_id = $1 AND book = $2`,
