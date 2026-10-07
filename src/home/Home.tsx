@@ -3,8 +3,9 @@ import { useAuth } from '../auth'
 import { useI18n } from '../i18n'
 import { useProgress } from '../progress/useProgress'
 import { useSettings } from '../settings/context'
-import { getActiveBook } from '../books/active'
+import { DEFAULT_BOOK, getActiveBook } from '../books/active'
 import { cachedBooks, fetchBooks } from '../api/books'
+import { prefetchRound } from '../api/study'
 import { LANGS, type Book } from '../books/data'
 import { LANG_COLOR } from '../books/langColor'
 import UserChip from '../UserChip'
@@ -67,7 +68,7 @@ export default function Home({
   onLogin?: () => void
 }) {
   const { lang, t } = useI18n()
-  const { user, logout } = useAuth()
+  const { user, ready: authReady, logout } = useAuth()
   const { settings } = useSettings()
   const { data, ready } = useProgress()
 
@@ -83,6 +84,13 @@ export default function Home({
     }
     // Refetch when the account changes so learned/exposed are for this user.
   }, [user])
+
+  // Warm the round the Study button will open (App uses the same fallback), so
+  // tapping it shows cards instead of waiting on a deal.
+  const studyBook = settings.activeBook ?? DEFAULT_BOOK
+  useEffect(() => {
+    if (authReady && user) prefetchRound(studyBook)
+  }, [authReady, user, studyBook])
 
   const book =
     books.find((b) => b.id === (settings.activeBook ?? getActiveBook())) ??

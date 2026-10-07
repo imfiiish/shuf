@@ -7,6 +7,7 @@ import {
 } from 'react'
 import * as api from './api/auth'
 import { clearBooksCache } from './api/books'
+import { clearRoundCache } from './api/study'
 import { clearProgressCache } from './progress/useProgress'
 import { AuthContext, type AuthCtx, type AuthUser } from './auth'
 
@@ -31,6 +32,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     const u = await api.login(username, pin)
     clearBooksCache()
     clearProgressCache()
+    clearRoundCache()
     setUser(u)
     return u
   }, [])
@@ -38,6 +40,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
   const register = useCallback(async (username: string, pin: string) => {
     const u = await api.register(username, pin)
     clearProgressCache()
+    clearRoundCache()
     setUser(u)
     return u
   }, [])
@@ -52,6 +55,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
     await api.logout()
     clearBooksCache()
     clearProgressCache()
+    clearRoundCache()
     setUser(null)
   }, [])
 
