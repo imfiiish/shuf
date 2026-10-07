@@ -130,6 +130,21 @@ function loadBuffer(url: string): Promise<AudioBuffer> {
   return p
 }
 
+/**
+ * Warm the cache for a card's candidate voices (fetch + decode) so revealing
+ * it later plays instantly. Decode, not just fetch, is the point: the reveal
+ * must not wait on either.
+ */
+export function preloadAudio(sources: string[]): void {
+  if (sources.length === 0) return
+  getCtx() // build the context now, off the reveal path
+  for (const url of sources) {
+    void loadBuffer(url).catch(() => {
+      /* missing voice: ignore, play() will skip it too */
+    })
+  }
+}
+
 /** One sounding voice: the source plus its own fade gain. */
 type Voice = { source: AudioBufferSourceNode; gain: GainNode }
 

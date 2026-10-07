@@ -3,7 +3,7 @@ import FlipDeck, { type CardData, type Slot } from './FlipDeck'
 import { useCopyNotice } from './useCopyNotice'
 import { useDoubleRightClick, useWheelNav } from './useDeckNav'
 import { useStageScale } from './useStageScale'
-import { audioSources, useAudioPlayer } from './audio'
+import { audioSources, preloadAudio, useAudioPlayer } from './audio'
 import { useAuth } from '../auth'
 import { useI18n } from '../i18n'
 import { logicalDay } from '../utils'
@@ -129,6 +129,14 @@ export default function Flip({
     markExposed(word)
     schedulePush()
   }, [deck, center, markExposed, schedulePush])
+
+  // Warm the centre card's audio while it is being read, so revealing it plays
+  // instantly instead of fetching + decoding on the reveal.
+  useEffect(() => {
+    const card = deck[center]
+    if (!card) return
+    preloadAudio(audioSources(roundLang, card.sound ?? null))
+  }, [deck, center, roundLang])
 
   // Flush on page hide (survives unload) and on unmount.
   useEffect(() => {

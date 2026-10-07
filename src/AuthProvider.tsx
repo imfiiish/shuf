@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from 'react'
 import * as api from './api/auth'
+import { clearBooksCache } from './api/books'
 import { AuthContext, type AuthCtx, type AuthUser } from './auth'
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
@@ -27,6 +28,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (username: string, pin: string) => {
     const u = await api.login(username, pin)
+    clearBooksCache()
     setUser(u)
     return u
   }, [])
@@ -45,6 +47,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await api.logout()
+    clearBooksCache()
     setUser(null)
   }, [])
 
