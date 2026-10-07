@@ -44,6 +44,39 @@ async function deal(
   })
 }
 
+// The current round per book, plus the in-flight deal, so Home can warm it and
+// the study page paints without waiting (a double mount shares one request).
+const roundCache = new Map<string, StudyRound>()
+const roundInflight = new Map<string, Promise<StudyRound>>()
+
+/** The last dealt (current) round for a book, if any. */
+export function cachedRound(book: string): StudyRound | null {
+  return roundCache.get(book) ?? null
+}
+
+/** Forget every cached round (logout / account switch). */
+export function clearRoundCache(): void {
+  roundCache.clear()
+  roundInflight.clear()
+}
+
+/** Deal the current round, sharing an in-flight request and caching it. */
+export function ensureRound(book: string): Promise<StudyRound> {
+  const cached = roundCache.get(book)
+  if (cached) return Promise.resolve(cached)
+  const inflight = roundInflight.get(book)
+  if (inflight) return inflight
+  const p = fetchRound(book).finally(() => roundInflight.delete(book))
+  roundInflight.set(book, p)
+  return p
+}
+
+/** Warm the current round in the background so entering study does not wait. */
+export function prefetchRound(book: string): void {
+  if (roundCache.has(book) || roundInflight.has(book)) return
+  void ensureRound(book).catch(() => {})
+}
+
 /** Deal the current round; `advance` moves on to the next one. */
 export async function fetchRound(
   book: string,
@@ -52,7 +85,9 @@ export async function fetchRound(
 ): Promise<StudyRound> {
   const res = await deal(book, advance, opts)
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return (await res.json()) as StudyRound
+  const round = (await res.json()) as StudyRound
+  roundCache.set(book, round)
+  return round
 }
 
 function toDefs(v: unknown): string[] | undefined {

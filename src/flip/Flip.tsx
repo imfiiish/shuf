@@ -8,6 +8,8 @@ import { useAuth } from '../auth'
 import { useI18n } from '../i18n'
 import { logicalDay } from '../utils'
 import {
+  cachedRound,
+  ensureRound,
   fetchRound,
   saveProgress,
   saveProgressBeacon,
@@ -51,6 +53,11 @@ export default function Flip({
   const [stageKey, setStageKey] = useState(0)
   // The language of the current round — decides which voices are tried.
   const [roundLang, setRoundLang] = useState<string | null>(null)
+  // A round is being dealt (flush + deal). Sink the current cards and show a
+  // spinner so the click is acknowledged while the round-trips finish; the new
+  // deck then plays the entrance.
+  const [dealing, setDealing] = useState(false)
+  const busyRef = useRef(false)
 
   const { copied, copy, clear: clearCopy } = useCopyNotice()
   const play = useAudioPlayer()
@@ -165,7 +172,9 @@ export default function Flip({
       let startIndex = 0
       try {
         if (!user) await enterAsGuest()
-        const round = await fetchRound(book)
+        // A round warmed by Home (or an earlier mount of this book) paints
+        // immediately; otherwise dealing is shared with any in-flight prefetch.
+        const round = cachedRound(book) ?? (await ensureRound(book))
         roundSeqRef.current = round.roundSeq
         if (round.lastWord) {
           const idx = round.words.indexOf(round.lastWord)
@@ -229,6 +238,9 @@ export default function Flip({
       setRoundLang(round.lang)
     } catch {
       return
+    } finally {
+      busyRef.current = false
+      setDealing(false)
     }
     setCenter(0)
     setRevealed(false)
@@ -239,6 +251,11 @@ export default function Flip({
   // "Next": deal the next round, unless today's reveals just crossed a
   // milestone (5 / 20 / 50 / 200) — then show Results instead.
   const advanceOrFinish = useCallback(async () => {
+    // Acknowledge the click immediately: the flush + deal below is two
+    // round-trips, so sink the cards while they run instead of freezing.
+    if (busyRef.current) return
+    busyRef.current = true
+    setDealing(true)
     // flushProgress reports today's revealed total in its response, so the
     // milestone can be checked here without a separate /api/progress call.
     await flushProgress()
@@ -246,6 +263,8 @@ export default function Flip({
     const reached = reachedMilestone(learnedRef.current)
     if (reached > shownMilestone(day, uid)) {
       setShownMilestone(day, reached, uid)
+      busyRef.current = false
+      setDealing(false)
       onFinish?.()
       return
     }
@@ -303,7 +322,11 @@ export default function Flip({
   )
 
   return (
-    <div className={`flip${shown === 'plain' ? '' : ' flip--forest'}`}>
+    <div
+      className={`flip${shown === 'plain' ? '' : ' flip--forest'}${
+        dealing ? ' flip--dealing' : ''
+      }`}
+    >
       <button
         type="button"
         className="flip-back"
@@ -371,6 +394,12 @@ export default function Flip({
           <kbd>Enter</kbd> {t('flip.next')}
         </span>
       </div>
+
+      {dealing && (
+        <div className="deck-dealing" role="status" aria-live="polite">
+          <i />
+        </div>
+      )}
     </div>
   )
 }

@@ -41,3 +41,41 @@
     transform: none;
   }
 }
+
+/* Dealing the next round: sink the current ring so the click is clearly
+   acknowledged while the progress flush + new deal finish. The fresh deck
+   then remounts the stage and replays app-in on the new cards. */
+.flip--dealing .cards {
+  opacity: 0.2;
+  transition: opacity 200ms ease;
+}
+
+.deck-dealing {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.deck-dealing i {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--accent);
+  animation: deck-spin 0.7s linear infinite;
+}
+
+@keyframes deck-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck-dealing i {
+    animation-duration: 1.6s;
+  }
+}

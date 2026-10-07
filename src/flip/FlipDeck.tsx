@@ -92,6 +92,11 @@ export default function FlipDeck({
     return () => cancelAnimationFrame(raf)
   }, [center, deck, updateHover])
 
+  // Deal the stage only once there are cards: mounting it empty would burn the
+  // `app-in` entrance before the deck arrives, so the cards would then just
+  // appear. Waiting lets the animation play on the real ring.
+  if (TOTAL === 0) return null
+
   return (
     <div
       className="stage"
