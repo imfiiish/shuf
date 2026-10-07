@@ -13,7 +13,6 @@ import {
   saveProgressBeacon,
   toCards,
 } from '../api/study'
-import { fetchProgress } from '../api/progress'
 import {
   reachedMilestone,
   setShownMilestone,
@@ -69,6 +68,9 @@ export default function Flip({
   const roundSeqRef = useRef(0)
   const lastWordRef = useRef<string | null>(null)
   const pushTimer = useRef<number | undefined>(undefined)
+  // Today's revealed total as last reported by the server, so "next" can
+  // check the milestone without an extra request.
+  const learnedRef = useRef(0)
 
   const flushProgress = useCallback(async () => {
     if (pushTimer.current) {
@@ -81,7 +83,9 @@ export default function Flip({
     pendingExposedRef.current.clear()
     pendingMetRef.current.clear()
     try {
-      await saveProgress(
+      // The response carries today's revealed total, so the next "next" can
+      // decide on a milestone without a second /api/progress call.
+      learnedRef.current = await saveProgress(
         book,
         roundSeqRef.current,
         logicalDay(),
@@ -227,18 +231,15 @@ export default function Flip({
   // "Next": deal the next round, unless today's reveals just crossed a
   // milestone (5 / 20 / 50 / 200) — then show Results instead.
   const advanceOrFinish = useCallback(async () => {
+    // flushProgress reports today's revealed total in its response, so the
+    // milestone can be checked here without a separate /api/progress call.
     await flushProgress()
     const day = logicalDay()
-    try {
-      const p = await fetchProgress(day, 1)
-      const reached = reachedMilestone(p.today.learned)
-      if (reached > shownMilestone(day, uid)) {
-        setShownMilestone(day, reached, uid)
-        onFinish?.()
-        return
-      }
-    } catch {
-      // network error: just continue
+    const reached = reachedMilestone(learnedRef.current)
+    if (reached > shownMilestone(day, uid)) {
+      setShownMilestone(day, reached, uid)
+      onFinish?.()
+      return
     }
     await nextRound()
   }, [flushProgress, onFinish, nextRound, uid])

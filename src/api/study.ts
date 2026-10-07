@@ -95,7 +95,11 @@ export function toCards(items: RawCard[]): CardData[] {
   }))
 }
 
-/** Record what was seen (exposed) / learned (met). Idempotent-ish: counters add. */
+/**
+ * Record what was seen (exposed) / learned (met). Idempotent-ish: counters
+ * add. Returns today's distinct revealed total, so the caller can check a
+ * milestone without a follow-up /api/progress request.
+ */
 export async function saveProgress(
   book: string,
   roundSeq: number,
@@ -103,7 +107,7 @@ export async function saveProgress(
   exposed: string[],
   met: Record<string, number>,
   lastWord: string | null,
-): Promise<void> {
+): Promise<number> {
   const res = await fetch('/api/study/progress', {
     method: 'PUT',
     credentials: 'include',
@@ -111,6 +115,8 @@ export async function saveProgress(
     body: JSON.stringify({ book, roundSeq, day, exposed, met, lastWord }),
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = (await res.json()) as { learned?: number }
+  return data.learned ?? 0
 }
 
 /** Best-effort send on page hide, which survives the unload. */
