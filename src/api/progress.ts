@@ -9,13 +9,6 @@ export type DayTotals = {
   exposedOnly: number
 }
 
-export type ProgressDay = {
-  day: string
-  learned: number
-  exposed: number
-  reveals: number
-}
-
 /** Per-round totals for the day view. */
 export type RoundStat = {
   book: string
@@ -27,7 +20,6 @@ export type RoundStat = {
 export type Progress = {
   day: string
   today: DayTotals
-  daily: ProgressDay[]
   rounds: RoundStat[]
   languages: LangBurst[]
 }
@@ -40,11 +32,8 @@ export type LangBurst = {
   today: number
 }
 
-export async function fetchProgress(
-  day: string,
-  days = 30,
-): Promise<Progress> {
-  const params = new URLSearchParams({ day, days: String(days) })
+export async function fetchProgress(day: string): Promise<Progress> {
+  const params = new URLSearchParams({ day })
   const res = await fetch(`/api/progress?${params}`, {
     credentials: 'include',
   })

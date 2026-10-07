@@ -19,7 +19,7 @@ export default function Results({
   useEffect(() => {
     let alive = true
     const day = logicalDay()
-    Promise.all([fetchProgress(day, 1), fetchDayWords(day)]).then(
+    Promise.all([fetchProgress(day), fetchDayWords(day)]).then(
       ([p, words]) => {
         if (!alive) return
         const rounds = p.rounds.map((r) => ({ e: r.exposed, r: r.reveals }))

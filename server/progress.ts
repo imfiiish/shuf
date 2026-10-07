@@ -31,12 +31,10 @@ progress.get('/', async (c) => {
   if (!userId) return c.json({ error: 'unauthorized' }, 401)
 
   const day = pickDay(c.req.query('day')) ?? logicalDay()
-  const parsedDays = Number.parseInt(c.req.query('days') ?? '', 10)
-  const days = Number.isFinite(parsedDays)
-    ? Math.min(Math.max(parsedDays, 1), 365)
-    : 30
 
-  const [today, daily, rounds, languages] = await Promise.all([
+  // `daily` (a 30-day rollup) used to be returned here; nothing consumed it,
+  // so the aggregate is gone. The calendar gets its own /days range instead.
+  const [today, rounds, languages] = await Promise.all([
     pool.query<{
       learned: number
       exposed: number
@@ -58,23 +56,6 @@ progress.get('/', async (c) => {
            ON s.user_id = d.user_id AND s.lang = d.lang AND s.word = d.word
         WHERE d.user_id = $1 AND d.day = $2::date`,
       [userId, day],
-    ),
-    pool.query<{
-      day: string
-      learned: number
-      exposed: number
-      reveals: number
-    }>(
-      `SELECT day::text AS day,
-              COALESCE(sum(learned), 0)::int AS learned,
-              COALESCE(sum(exposed), 0)::int AS exposed,
-              COALESCE(sum(reveals), 0)::int AS reveals
-         FROM user_day_stats_all
-        WHERE user_id = $1
-          AND day BETWEEN $2::date - ($3::int - 1) AND $2::date
-        GROUP BY day
-        ORDER BY day`,
-      [userId, day, days],
     ),
     pool.query<{
       book: string
@@ -121,7 +102,6 @@ progress.get('/', async (c) => {
           exposedOnly: t.exposed_only,
         }
       : { ...emptyTotals },
-    daily: daily.rows,
     rounds: rounds.rows.map((r) => ({
       book: r.book,
       roundSeq: Number(r.round_seq),
