@@ -91,6 +91,7 @@ export function toCards(items: RawCard[]): CardData[] {
     phonetic: it.phonetic ?? '',
     senses: normalizeSenses(it.senses),
     tags: it.tags ?? [],
+    sound: it.sound ?? null,
   }))
 }
 

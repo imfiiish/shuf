@@ -8,6 +8,8 @@ export type CardData = {
   phonetic: string
   senses: CardSense[]
   tags: string[]
+  /** Audio file name (no directory); absent when the word has no recording. */
+  sound?: string | null
 }
 
 /** Ring slot: a position, 'B' the hidden back for even counts, 'S' the right

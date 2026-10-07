@@ -3,6 +3,7 @@ import FlipDeck, { type CardData, type Slot } from './FlipDeck'
 import { useCopyNotice } from './useCopyNotice'
 import { useDoubleRightClick, useWheelNav } from './useDeckNav'
 import { useStageScale } from './useStageScale'
+import { audioSources, useAudioPlayer } from './audio'
 import { useAuth } from '../auth'
 import { useI18n } from '../i18n'
 import { logicalDay } from '../utils'
@@ -49,8 +50,11 @@ export default function Flip({
   const [revealed, setRevealed] = useState(false)
   const [revealCounts, setRevealCounts] = useState<Record<string, number>>({})
   const [stageKey, setStageKey] = useState(0)
+  // The language of the current round — decides which voices are tried.
+  const [roundLang, setRoundLang] = useState<string | null>(null)
 
   const { copied, copy, clear: clearCopy } = useCopyNotice()
+  const play = useAudioPlayer()
 
   const { stageRef, scale } = useStageScale()
   const TOTAL = deck.length
@@ -155,7 +159,10 @@ export default function Flip({
           const idx = round.words.indexOf(round.lastWord)
           if (idx >= 0) startIndex = idx
         }
-        if (alive) setDeck(toCards(round.items))
+        if (alive) {
+          setDeck(toCards(round.items))
+          setRoundLang(round.lang)
+        }
       } catch {
         if (alive) setDeck(WORDS) // API down: keep the demo deck usable
       }
@@ -186,11 +193,14 @@ export default function Flip({
     schedulePush()
   }, [deck, center, markExposed, schedulePush])
 
-  // reveal / flip back (no audio to replay, so a second click hides it)
-  const toggleReveal = useCallback(() => {
-    if (revealed) setRevealed(false)
-    else reveal()
-  }, [revealed, reveal])
+  // Space / tapping the centre card reveals the definition and speaks it.
+  // Once shown it stays shown — a second press just replays the audio (like
+  // the old study page), it does not flip back to the bare word.
+  const revealAndPlay = useCallback(() => {
+    if (!revealed) reveal()
+    const card = deck[center]
+    play(audioSources(roundLang, card?.sound ?? null))
+  }, [revealed, reveal, deck, center, roundLang, play])
 
   const copyCurrent = useCallback(() => {
     if (centerName) copy(centerName)
@@ -204,6 +214,7 @@ export default function Flip({
       const round = await fetchRound(book, true)
       roundSeqRef.current = round.roundSeq
       setDeck(toCards(round.items))
+      setRoundLang(round.lang)
     } catch {
       return
     }
@@ -247,7 +258,7 @@ export default function Flip({
       if (k === ' ') {
         e.preventDefault()
         if (e.repeat) return
-        toggleReveal()
+        revealAndPlay()
         return
       }
       if (k === 'Enter') {
@@ -267,7 +278,7 @@ export default function Flip({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [go, toggleReveal, copyCurrent, advanceOrFinish])
+  }, [go, revealAndPlay, copyCurrent, advanceOrFinish])
 
   // double right-click (trackpad two-finger double tap), anywhere including
   // the center card
@@ -275,11 +286,11 @@ export default function Flip({
 
   const onCardClick = useCallback(
     (_name: string, slot: Slot) => {
-      if (slot === 0) toggleReveal()
+      if (slot === 0) revealAndPlay()
       else if (slot === 1 || slot === 'S') go(1)
       else if (slot === -1) go(-1)
     },
-    [toggleReveal, go],
+    [revealAndPlay, go],
   )
 
   return (
