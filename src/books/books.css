@@ -1,0 +1,812 @@
+/* Wordbooks page — the picked list on the left (total / learned / exposed,
+   a study action and a customize dialog), the index of every list on the
+   right. Wears the forest skin. */
+
+.bi-page {
+  position: relative;
+  min-height: 100vh;
+  padding: 64px 44px 48px;
+  color: #eef4ee;
+  background:
+    radial-gradient(
+      120% 80% at 50% -10%,
+      rgba(143, 220, 160, 0.22),
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 70% at 88% 112%,
+      rgba(230, 200, 119, 0.14),
+      transparent 60%
+    ),
+    linear-gradient(160deg, #14332a 0%, #0d1f19 55%, #10251d 100%);
+}
+
+/* leave room for the fixed capsule nav on the left */
+.bi-page--rail {
+  padding-left: 124px;
+}
+
+@media (max-width: 720px) {
+  .bi-page--rail {
+    padding-left: 108px;
+  }
+}
+
+.bi-head {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.bi-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  line-height: 1.1;
+}
+
+.bi-desc {
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+  color: #9db3a6;
+}
+
+.bi-langs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.bi-lang {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #cfe0d4;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.bi-lang em {
+  font-style: normal;
+  font-size: 0.66rem;
+  color: #9db3a6;
+  font-variant-numeric: tabular-nums;
+}
+
+.bi-lang:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.bi-lang.on {
+  color: #08130f;
+  background: #8fdca0;
+  border-color: #8fdca0;
+}
+
+.bi-lang.on em {
+  color: rgba(8, 19, 15, 0.6);
+}
+
+.bi-body {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+/* ---- the picked list ---- */
+.bi-sheet {
+  flex: 1 1 420px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px 26px 26px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 24px 50px -34px rgba(0, 0, 0, 0.85);
+}
+
+.bi-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.bi-chip {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 60px;
+  border-radius: 5px 10px 10px 5px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 10px 20px -12px rgba(0, 0, 0, 0.8);
+}
+
+.bi-sheet-id {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.bi-kicker {
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #9db3a6;
+}
+
+.bi-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 650;
+  line-height: 1.12;
+}
+
+.bi-sub {
+  font-size: 0.78rem;
+  color: #9db3a6;
+}
+
+.bi-pct {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: #eef4ee;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the three numbers you have: total / learned / exposed */
+.bi-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bi-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 15px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.bi-stat span {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9db3a6;
+}
+
+.bi-stat b {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Total = base + added (green) / − excluded (red) */
+.bi-delta {
+  font-style: normal;
+  font-size: 1.25rem;
+}
+
+.bi-delta.up {
+  color: #7fd99a;
+}
+
+.bi-delta.down {
+  color: #e08a7a;
+}
+
+.bi-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bi-meter-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+/* exposed sits underneath in yellow; learned covers its left part in green */
+.bi-meter-track > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bi-meter-exp {
+  background: #e6c877;
+}
+
+.bi-meter-learn {
+  background: #8fdca0;
+}
+
+.bi-meter-meta {
+  font-size: 0.76rem;
+  color: #9db3a6;
+  font-variant-numeric: tabular-nums;
+}
+
+.bi-adjust {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.16);
+  font-size: 0.78rem;
+  color: #9db3a6;
+}
+
+.bi-adjust-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.bi-adjust b {
+  color: #eef4ee;
+  font-variant-numeric: tabular-nums;
+}
+
+/* actions */
+.bi-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.bi-start {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 13px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  color: #eef4ee;
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease,
+    box-shadow 0.16s ease, color 0.16s ease;
+}
+
+.bi-start:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.bi-start-ico {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+}
+
+.bi-start.on {
+  color: #08130f;
+  background: #8fdca0;
+  border-color: #8fdca0;
+  box-shadow: 0 16px 30px -16px rgba(143, 220, 160, 0.9);
+}
+
+.bi-custom {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: #cfe0d4;
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.bi-custom:hover {
+  color: #eef4ee;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+.bi-custom:disabled,
+.bi-custom:disabled:hover {
+  opacity: 0.4;
+  cursor: not-allowed;
+  color: #cfe0d4;
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.bi-start:focus-visible,
+.bi-custom:focus-visible,
+.bi-lang:focus-visible,
+.bi-card:focus-visible,
+.bi-cand:focus-visible {
+  outline: 2px solid #8fdca0;
+  outline-offset: 2px;
+}
+
+/* ---- the index rail ---- */
+.bi-rail {
+  flex: 0 0 auto;
+  width: 320px;
+  position: sticky;
+  top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bi-rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #9db3a6;
+}
+
+.bi-rail-head em {
+  font-style: normal;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.bi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  max-height: 70vh;
+  overflow: auto;
+  padding: 2px 4px 6px 0;
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    #000 calc(100% - 22px),
+    transparent
+  );
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent);
+}
+
+.bi-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 92px;
+  padding: 11px 12px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #eef4ee;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease,
+    transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bi-card:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+/* not-ready lists: greyed out and unselectable */
+.bi-card:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bi-card:disabled:hover {
+  border-color: rgba(255, 255, 255, 0.1);
+  transform: none;
+}
+
+.bi-card.on {
+  border-color: var(--accent-lang);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 14px 28px -18px var(--accent-lang);
+}
+
+.bi-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 15px;
+}
+
+.bi-card-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09);
+  overflow: hidden;
+}
+
+.bi-card-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-lang);
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bi-card-tag {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #8fdca0;
+  color: #08130f;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.bi-card-tag--soon {
+  background: rgba(255, 255, 255, 0.14);
+  color: #9db3a6;
+}
+
+.bi-card-name {
+  flex: 1;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.bi-card-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.66rem;
+  color: #9db3a6;
+  font-variant-numeric: tabular-nums;
+}
+
+.bi-card-count {
+  color: #cfe0d4;
+}
+
+.bi-card-pct {
+  color: var(--accent-lang);
+}
+
+/* ---- the customize popup: rises from the bottom, like the login ---- */
+.bi-dialog {
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  max-width: 640px;
+  color: #eef4ee;
+  border: 1px solid rgba(143, 220, 160, 0.18);
+  border-radius: 18px;
+  background: #22382d;
+  box-shadow: 0 40px 90px -50px rgba(0, 0, 0, 0.95);
+  animation: bi-rise 440ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bi-dialog.closing {
+  animation: bi-sink 240ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.modal-backdrop.closing {
+  animation: bi-fade-out 240ms ease forwards;
+}
+
+@keyframes bi-rise {
+  from {
+    opacity: 0;
+    transform: translateY(100vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bi-sink {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes bi-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.bi-dialog .modal-close {
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+}
+
+/* the two groups, stacked and scrollable */
+.bi-groups {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.bi-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 18px 22px 20px;
+}
+
+.bi-group + .bi-group {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.bi-group-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bi-group-head h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #eef4ee;
+}
+
+/* a colour key before each group title: sand for exclude, green for add */
+.bi-group-head h3::before {
+  content: '';
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: #c9bb8e;
+}
+
+.bi-group:last-child .bi-group-head h3::before {
+  background: #8fdca0;
+}
+
+.bi-group-hint {
+  font-size: 0.74rem;
+  color: #a9bcb0;
+}
+
+/* candidate cards — the rail card shape, two per row */
+.bi-cands {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bi-cands > li {
+  display: flex;
+}
+
+.bi-cand {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 80px;
+  padding: 11px 12px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #22332b;
+  color: #eef4ee;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease,
+    transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.bi-cand:hover {
+  border-color: rgba(255, 255, 255, 0.34);
+  transform: translateY(-2px);
+}
+
+.bi-cand:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.bi-cand:disabled:hover {
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: none;
+}
+
+.bi-cand-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 16px;
+}
+
+.bi-cand-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.bi-cand-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent-lang);
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.bi-cand-mark {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  color: #08130f;
+}
+
+.bi-cand-name {
+  flex: 1;
+  font-size: 0.84rem;
+  font-weight: 650;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.bi-cand-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 0.68rem;
+  color: #9db3a6;
+  font-variant-numeric: tabular-nums;
+}
+
+.bi-cand-effect {
+  color: #c9bb8e;
+}
+
+/* exclude: checked turns the card sand (no strike — keep it readable) */
+.bi-cand:not(.bi-cand-add).on {
+  border-color: #c9bb8e;
+  background: #38331f;
+  box-shadow: 0 12px 24px -16px rgba(201, 187, 142, 0.8);
+}
+
+.bi-cand:not(.bi-cand-add).on .bi-cand-mark {
+  background: #c9bb8e;
+}
+
+.bi-cand:not(.bi-cand-add).on .bi-cand-bar > span {
+  background: #c9bb8e;
+}
+
+.bi-cand:not(.bi-cand-add).on .bi-cand-name {
+  color: #eaddbe;
+}
+
+/* add: checked turns the card green */
+.bi-cand-add .bi-cand-effect {
+  color: #9db3a6;
+}
+
+.bi-cand-add.on {
+  border-color: #8fdca0;
+  background: #1d3a2b;
+  box-shadow: 0 12px 24px -16px rgba(143, 220, 160, 0.8);
+}
+
+.bi-cand-add.on .bi-cand-mark {
+  background: #8fdca0;
+}
+
+.bi-cand-add.on .bi-cand-effect {
+  color: #8fdca0;
+}
+
+.bi-group-empty {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #a9bcb0;
+}
+
+@media (max-width: 860px) {
+  .bi-rail {
+    position: static;
+    order: -1;
+    width: 100%;
+  }
+
+  .bi-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    max-height: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .bi-page {
+    padding: 56px 18px 48px;
+  }
+
+  .bi-page--rail {
+    padding-left: 108px;
+  }
+
+  .bi-head {
+    align-items: flex-start;
+  }
+
+  .bi-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bi-actions {
+    flex-direction: column;
+  }
+}

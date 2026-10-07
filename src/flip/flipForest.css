@@ -1,0 +1,47 @@
+/* Flip · Focus — the default flip screen wearing the Progress / Result theme.
+   The ring, next button and hints are the same elements; only the skin (the
+   accent, the backdrop and the card glow) changes. */
+
+.flip--forest {
+  /* the app accent is tan; the Progress / Result screens are green */
+  --accent: #8fdca0;
+  --accent-ring: rgba(143, 220, 160, 0.4);
+  --kbd-bg: rgba(143, 220, 160, 0.14);
+  --kbd-border: rgba(143, 220, 160, 0.4);
+  background:
+    radial-gradient(
+      120% 80% at 50% -10%,
+      rgba(143, 220, 160, 0.22),
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 70% at 88% 112%,
+      rgba(230, 200, 119, 0.14),
+      transparent 60%
+    ),
+    linear-gradient(160deg, #14332a 0%, #0d1f19 55%, #10251d 100%);
+}
+
+/* page chrome on the forest skin: translucent dark, green hover */
+.flip--forest .flip-back,
+.flip--forest .deck-action {
+  border-color: rgba(143, 220, 160, 0.28);
+  background: rgba(16, 28, 22, 0.72);
+  color: #cfe0d4;
+  backdrop-filter: blur(14px);
+}
+
+.flip--forest .flip-back:hover,
+.flip--forest .deck-action:hover {
+  color: #08130f;
+  background: #8fdca0;
+  border-color: #8fdca0;
+  box-shadow: 0 12px 28px -12px rgba(143, 220, 160, 0.85);
+}
+
+.flip--forest .flip-back:focus-visible,
+.flip--forest .deck-action:focus-visible {
+  outline: 2px solid #8fdca0;
+  outline-offset: 2px;
+  box-shadow: none;
+}

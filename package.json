@@ -1,0 +1,43 @@
+{
+  "name": "shuf-flip",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n web,api -c cyan,magenta \"vite\" \"npm:dev:api\"",
+    "dev:web": "vite",
+    "dev:api": "tsx watch server/index.ts",
+    "build": "tsc -b && vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "db:psql": "docker compose exec db psql -U shuf -d shuf",
+    "db:schema": "docker compose exec -T db psql -U shuf -d shuf -v ON_ERROR_STOP=1 < db/schema.sql",
+    "db:web": "docker compose up -d pgweb",
+    "db:dump": "docker compose exec -T db pg_dump -U shuf -d shuf --clean --if-exists --no-owner --no-privileges --exclude-schema=app > db/dump.sql",
+    "db:restore": "docker compose exec -T db psql -U shuf -d shuf -v ON_ERROR_STOP=1 < db/dump.sql",
+    "db:logs": "docker compose logs -f db"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.3",
+    "hono": "^4.13.12",
+    "pg": "^8.23.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "concurrently": "^10.0.5",
+    "oxlint": "^1.81.0",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0.2",
+    "vite": "^8.3.0"
+  }
+}

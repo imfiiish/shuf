@@ -1,0 +1,13 @@
+/* Flip page root. Card/stage/chrome styles are shared in
+   src/components/deck.css. */
+
+.flip {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}

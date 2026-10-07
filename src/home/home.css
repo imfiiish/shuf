@@ -1,0 +1,306 @@
+/* Home — Progress's two-column layout: a flexible main column and a fixed
+   right rail of cards. Wears the same forest skin. */
+
+.home-page {
+  position: relative;
+  min-height: 100vh;
+  padding: 64px 44px 64px;
+  color: #eef4ee;
+  background:
+    radial-gradient(
+      120% 80% at 50% -10%,
+      rgba(143, 220, 160, 0.22),
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 70% at 88% 112%,
+      rgba(230, 200, 119, 0.14),
+      transparent 60%
+    ),
+    linear-gradient(160deg, #14332a 0%, #0d1f19 55%, #10251d 100%);
+}
+
+/* leave room for the fixed capsule nav on the left */
+.home-page--rail {
+  padding-left: 124px;
+}
+
+.home-head {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.home-head-copy {
+  min-width: 0;
+}
+
+.home-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  line-height: 1.1;
+}
+
+.home-desc {
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+  color: #9db3a6;
+}
+
+.home-body {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.home-main {
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.home-rail {
+  flex: 0 0 auto;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---- chart cards (same shell as the Progress page) ---- */
+.home-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 24px 50px -34px rgba(0, 0, 0, 0.85);
+}
+
+/* the charts already sit on a card here, so drop their own backdrop */
+.home-card .rc {
+  height: auto;
+  padding: 0;
+  background: none;
+}
+
+.home-card .rc-pburst {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.home-card .rc-gauge svg {
+  max-width: 360px;
+}
+
+/* ---- left column: the wordbook being studied (borrows the Wordbooks sheet) ---- */
+.home-learn {
+  gap: 20px;
+}
+
+.home-learn-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.home-learn-chip {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 56px;
+  border-radius: 5px 10px 10px 5px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 10px 20px -12px rgba(0, 0, 0, 0.8);
+}
+
+.home-learn-id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.home-kicker {
+  font-size: 0.66rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #9db3a6;
+}
+
+.home-learn-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 650;
+  line-height: 1.12;
+}
+
+.home-learn-sub {
+  font-size: 0.78rem;
+  color: #9db3a6;
+}
+
+.home-learn-pct {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 15px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.home-stat span {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #9db3a6;
+}
+
+.home-stat b {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.home-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.home-meter-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+/* exposed sits underneath in yellow; learned covers its left part in green */
+.home-meter-track > span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.home-meter-exp {
+  background: #e6c877;
+}
+
+.home-meter-learn {
+  background: #8fdca0;
+}
+
+.home-meter-meta {
+  font-size: 0.76rem;
+  color: #9db3a6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* the two actions */
+.home-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 2px;
+}
+
+.home-start {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid #8fdca0;
+  background: #8fdca0;
+  color: #08130f;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.home-start:hover {
+  box-shadow: 0 16px 30px -14px rgba(143, 220, 160, 0.9);
+}
+
+.home-start:active {
+  transform: translateY(1px);
+}
+
+.home-start:focus-visible,
+.home-change:focus-visible {
+  outline: 2px solid #8fdca0;
+  outline-offset: 2px;
+}
+
+.home-change {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: transparent;
+  color: #cfe0d4;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.home-change:hover {
+  color: #eef4ee;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.34);
+}
+
+@media (max-width: 720px) {
+  .home-page--rail {
+    padding-left: 108px;
+  }
+}
+
+@media (max-width: 560px) {
+  .home-page {
+    padding: 56px 18px 48px;
+  }
+
+  .home-page--rail {
+    padding-left: 108px;
+  }
+}

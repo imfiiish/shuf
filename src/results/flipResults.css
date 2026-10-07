@@ -1,0 +1,383 @@
+/* Flip · Results scene: a full-screen reward summary. Two columns — words
+   encountered on the left rail, a small chart report on the right. Uses its
+   own palette instead of the app tokens. */
+
+.results {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-content: center;
+  overflow: hidden;
+  color: #eef4ee;
+  background:
+    radial-gradient(
+      120% 80% at 50% -10%,
+      rgba(143, 220, 160, 0.28),
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 70% at 88% 112%,
+      rgba(230, 200, 119, 0.18),
+      transparent 60%
+    ),
+    linear-gradient(160deg, #14332a 0%, #0d1f19 55%, #10251d 100%);
+  animation: results-in 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* standalone page: fill the host page instead of overlaying the viewport */
+.results--contained {
+  position: absolute;
+  inset: 0;
+}
+
+/* Fixed design canvas, scaled as one unit (see useStageScale) so every screen
+   shows the identical composition — mirrors how the deck stage works. */
+.results-stage {
+  width: 1440px;
+  height: 900px;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    'head head'
+    'side main'
+    'actions actions';
+  column-gap: 18px;
+  row-gap: 22px;
+  padding: 48px 64px 40px;
+  transform: scale(var(--s, 1));
+  transform-origin: center;
+}
+
+/* header spans both columns so it centres on the whole canvas, not the
+   right column */
+.results-head {
+  grid-area: head;
+  text-align: center;
+}
+
+/* ---- left rail: learned words as a floating card ---- */
+.results-side {
+  grid-area: side;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 30px 70px -34px rgba(0, 0, 0, 0.85);
+  /* hide the scrollbar but keep scrolling */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.results-side::-webkit-scrollbar {
+  display: none;
+}
+
+.results-side-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 14px;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #8fdca0;
+}
+
+.results-side-count {
+  letter-spacing: 0;
+  font-size: 0.85rem;
+  color: #eef4ee;
+  font-variant-numeric: tabular-nums;
+}
+
+.results-wordlist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rw {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: background 140ms ease, transform 140ms ease;
+}
+
+/* the proportion bar behind each word (width via --w) */
+.rw::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    90deg,
+    rgba(143, 220, 160, 0.22),
+    rgba(143, 220, 160, 0.08)
+  );
+  animation: rw-grow 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+.rw.review::after {
+  background: linear-gradient(
+    90deg,
+    rgba(230, 200, 119, 0.24),
+    rgba(230, 200, 119, 0.09)
+  );
+}
+
+.rw:hover {
+  background: rgba(255, 255, 255, 0.09);
+  transform: translateX(2px);
+}
+
+.rw > * {
+  position: relative;
+  z-index: 1;
+}
+
+.rw-dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: #55705f;
+}
+
+.rw.new .rw-dot {
+  background: #8fdca0;
+}
+
+.rw.review .rw-dot {
+  background: #e6c877;
+}
+
+.rw-word {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rw-count {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  color: #9db3a6;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- right column: the chart report ---- */
+.results-main {
+  grid-area: main;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.results-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1.1;
+}
+
+/* the trailing "!" would push the words off-centre; an invisible twin before
+   the words balances the line so the words stay centred and the bang hangs */
+.results-title-ghost {
+  visibility: hidden;
+}
+
+/* ---- dashboard: halo + gauge, then pace across both ---- */
+.results-dashboard {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  /* row 1 hugs its content, row 2 (the pace chart) absorbs the leftover so
+     the actions below never get pushed past the canvas */
+  grid-template-rows: auto minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 14px;
+  width: 100%;
+  text-align: left;
+}
+
+.results-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 22px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 26px 64px -40px rgba(0, 0, 0, 0.9);
+}
+
+.results-panel-dual {
+  grid-column: 1 / -1;
+  min-height: 0;
+}
+
+/* the pace chart flexes to whatever height row 2 has left; the panel already
+   supplies the backdrop, so drop the chart's own `.rc` skin */
+.results-panel-dual .rc-dual {
+  min-height: 0;
+  background: none;
+}
+
+.results-panel-dual .rc-dual svg {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+
+/* the reusable charts are happy anywhere; nudge them to fit the panels */
+.results-panel-halo .rc-pie {
+  gap: 26px;
+}
+
+.results-panel-halo .rpe-dial {
+  width: 210px;
+  height: 210px;
+}
+
+.results-panel-halo .rc-legend {
+  min-width: 0;
+  gap: 10px;
+}
+
+.results-panel-halo .rc-legend li {
+  font-size: 0.88rem;
+}
+
+.results-panel-gauge .rc-gauge svg {
+  max-width: 380px;
+}
+
+/* ---- actions: spans both columns, centred ---- */
+.results-actions {
+  grid-area: actions;
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.results-btn {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 12px;
+  padding: 13px 28px;
+  border: 1px solid transparent;
+  transition: transform 160ms ease, box-shadow 160ms ease,
+    background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.results-btn.ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #eef4ee;
+}
+
+.results-btn.ghost:hover {
+  border-color: #8fdca0;
+  color: #8fdca0;
+}
+
+.results-btn.primary {
+  background: linear-gradient(135deg, #8fdca0, #6fc98a);
+  color: #0c1f16;
+  font-weight: 700;
+  box-shadow: 0 12px 30px -10px rgba(143, 220, 160, 0.7);
+}
+
+.results-btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 36px -10px rgba(143, 220, 160, 0.85);
+}
+
+/* Small screens are handled by the uniform scale, so no reflow here. The
+   stage simply shrinks as a whole instead of re-arranging. */
+
+@keyframes results-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes rw-grow {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--w, 0%);
+  }
+}
+
+/* "take a break" affordance that appears above the bottom hints once the
+   reveal count has reached the next milestone (aligned with the centre card).
+   Positioned relatively (vh) so it scales with the viewport height. */
+.flip-finish {
+  position: absolute;
+  left: 50%;
+  bottom: 12vh;
+  transform: translateX(calc(-50% - 80px));
+  z-index: 10;
+  padding: 9px 22px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+  cursor: pointer;
+  opacity: 0.85;
+  box-shadow: 0 8px 20px -12px rgba(0, 0, 0, 0.6);
+  transition: opacity 160ms ease, color 160ms ease, background 160ms ease,
+    border-color 160ms ease, transform 160ms ease;
+}
+
+.flip-finish:hover {
+  opacity: 1;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: translateX(calc(-50% - 80px)) translateY(-1px);
+}
+
+/* The results scene positions its chrome relatively, so it scales with the
+   viewport height (the real Flip page keeps its px values). */
+.scene-results .deck-home {
+  top: 3vh;
+}
+
+.scene-results .deck-action {
+  bottom: 3vh;
+}
+
+.scene-results .hints {
+  bottom: 3vh;
+}

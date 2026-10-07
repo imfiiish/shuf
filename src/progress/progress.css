@@ -1,0 +1,150 @@
+/* Progress page — a dark dashboard: charts read at day / week / month / total,
+   with the calendar module in the right rail. */
+
+.progress-page {
+  position: relative;
+  min-height: 100vh;
+  padding: 64px 44px 48px;
+  color: #eef4ee;
+  background:
+    radial-gradient(
+      120% 80% at 50% -10%,
+      rgba(143, 220, 160, 0.22),
+      transparent 60%
+    ),
+    radial-gradient(
+      90% 70% at 88% 112%,
+      rgba(230, 200, 119, 0.14),
+      transparent 60%
+    ),
+    linear-gradient(160deg, #14332a 0%, #0d1f19 55%, #10251d 100%);
+}
+
+/* leave room for the fixed capsule nav on the left */
+.progress-page--rail {
+  padding-left: 124px;
+}
+
+@media (max-width: 720px) {
+  .progress-page--rail {
+    padding-left: 108px;
+  }
+}
+
+.progress-body {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 28px;
+}
+
+.progress-main {
+  flex: 1 1 420px;
+  min-width: 0;
+}
+
+.progress-rail {
+  flex: 0 0 auto;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---- header + dimension tabs ---- */
+.progress-head {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto 20px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.progress-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+  line-height: 1.1;
+}
+
+.progress-desc {
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+  color: #9db3a6;
+}
+
+.progress-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.progress-tab {
+  padding: 7px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #9db3a6;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.progress-tab:hover {
+  color: #eef4ee;
+}
+
+.progress-tab.on {
+  color: #08130f;
+  background: #8fdca0;
+}
+
+/* ---- chart cards ---- */
+.progress-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.progress-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 24px 50px -34px rgba(0, 0, 0, 0.85);
+}
+
+.progress-card-wide {
+  grid-column: 1 / -1;
+}
+
+/* the charts already sit on a card here, so drop their own backdrop */
+.progress-card .rc {
+  height: auto;
+  padding: 0;
+  background: none;
+}
+
+
+.progress-card .rc-pie,
+.progress-card .rc-pburst {
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.progress-card .rc-gauge svg {
+  max-width: 360px;
+}

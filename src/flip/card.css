@@ -1,0 +1,369 @@
+/* FlipCard: one two-sided card. The deck (.deck.css) only places it. */
+
+.card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 540px;
+  aspect-ratio: 3 / 2;
+  cursor: pointer;
+  user-select: none;
+  transform-origin: center;
+  perspective: 1200px;
+  /* width is animated too: the center card grows by layout, not by transform
+     scale, so the faces are rasterized at their final size (B2) */
+  transition: transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 380ms ease,
+    width 460ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.card-flip {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 460ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The reveal flips to the back. The zoom is faked on the center card below by
+   animating its layout width (B2), so the faces are rasterized at their final
+   size instead of being stretched — which is what made the text blurry. */
+.card-flip.flipped {
+  transform: rotateY(180deg);
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 20px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--face-bg, var(--card));
+  box-shadow: var(--face-shadow, var(--elevate));
+  text-align: center;
+  overflow: hidden;
+  transition: box-shadow 200ms ease;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.face.back {
+  transform: rotateY(180deg);
+}
+
+/* center: biggest, in front, brighter paper */
+.pos-0 {
+  transform: translate(-50%, -50%);
+  opacity: 1;
+  z-index: 3;
+  --face-bg: var(--card-active);
+  --face-shadow: var(--card-shadow);
+}
+
+/* grow the card on reveal by animating layout width (540 → 582 ≈ 1.08×), with
+   no transform scale on the 3D layer — the back renders natively at 582. */
+.pos-0:has(.card-flip.flipped) {
+  width: 582px;
+}
+
+/* Swap reveal (FlipCard variant): the back face is natively larger (582 ≈
+   540 × 1.08) and the flip is a pure rotateY, so at 90° (edge-on) the card
+   swaps to the bigger back. Neither face is scaled, so text is always 1:1.
+   The card box keeps the front size, so the ring layout is unchanged. */
+.card--swap .face.back {
+  inset: auto;
+  left: 50%;
+  top: 50%;
+  width: 582px;
+  height: 388px;
+  margin: -194px 0 0 -291px;
+}
+
+/* in swap mode the box does not grow — the bigger back face is the zoom */
+.card--swap.pos-0:has(.card-flip.flipped) {
+  width: 540px;
+}
+
+/* right neighbor: 75% scale, 4/5 showing */
+.pos-1 {
+  transform: translate(-50%, -50%) translateX(392px) scale(0.75);
+  opacity: 0.5;
+  z-index: 2;
+}
+
+/* left neighbor: only 1/5 showing */
+.pos--1 {
+  transform: translate(-50%, -50%) translateX(-148px) scale(0.75);
+  opacity: 0.5;
+  z-index: 2;
+}
+
+.card.hovered {
+  --face-shadow: var(--card-shadow-hi);
+}
+
+.pos-1.hovered,
+.pos--1.hovered,
+.pos-S.hovered {
+  opacity: 0.75;
+}
+
+/* off-stage transition slots: invisible, keep the ring seamless */
+.pos-2 {
+  transform: translate(-50%, -50%) translateX(560px) scale(0.7);
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.pos--2 {
+  transform: translate(-50%, -50%) translateX(-560px) scale(0.7);
+  opacity: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* parked far off for cards outside the window */
+.pos-off-r {
+  transform: translate(-50%, -50%) translateX(1000px) scale(0.7);
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.pos-off-l {
+  transform: translate(-50%, -50%) translateX(-1000px) scale(0.7);
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* hidden back card for even counts */
+.pos-B {
+  transform: translate(-50%, -50%) scale(0.6);
+  opacity: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* right slot when only two cards remain */
+.pos-S {
+  transform: translate(-50%, -50%) translateX(310px) scale(0.75);
+  opacity: 0.5;
+  z-index: 2;
+}
+
+/* Only the visible ring gets its own compositing layer. Parked/back slots
+   never render (see FlipDeck), and the demo only ever uses .pos-0, so this
+   keeps the layer count at the five cards that can actually move. */
+.pos-0,
+.pos-1,
+.pos--1,
+.pos-2,
+.pos--2,
+.pos-S {
+  will-change: transform, opacity;
+}
+
+/* Only the center card (or a .card--swap demo card) ever rotates, so only it
+   needs a dedicated flip layer. */
+.pos-0 .card-flip,
+.card--swap .card-flip {
+  will-change: transform;
+}
+
+/* side cards: softer shadow than the center */
+.pos-1,
+.pos-S {
+  --face-shadow: 0 12px 30px -16px rgba(6, 10, 4, 0.55);
+}
+
+.inner {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+/* reveal-count dots */
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* the card pins them to its top */
+.dots-wrap {
+  position: absolute;
+  top: 14px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.dot.g {
+  background: var(--rate-g);
+}
+
+.dot.y {
+  background: var(--rate-y-solid);
+}
+
+.dot.r {
+  background: var(--rate-r);
+}
+
+.dot.empty {
+  background: var(--dot-empty);
+}
+
+.word {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  min-height: 1.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.word-text {
+  transition: opacity 220ms ease;
+}
+
+.word.copying .word-text {
+  opacity: 0;
+}
+
+.copy-notice {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  animation: fade-in 140ms ease-out;
+}
+
+.detail {
+  position: relative;
+  padding-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* divider drawn with a pseudo background, not a border: Gecko glitches a
+   border on a 3D-rotated face while flipping */
+.detail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border);
+}
+
+.phonetic {
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+.definition {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  line-height: 1.45;
+}
+
+.sense {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.sense-pos {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.85em;
+  font-style: italic;
+}
+
+.sense-defs {
+  flex: 0 1 auto;
+}
+
+.detail .phonetic {
+  animation: fade-up 240ms ease-out both;
+}
+
+.detail .definition {
+  animation: fade-up 240ms ease-out 70ms both;
+}
+
+.tag-list {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding-top: 12px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.7;
+}
+
+.tag + .tag::before {
+  content: '·';
+  margin: 0 7px;
+  opacity: 0.6;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---- isolated preview (catalog panel) ---- */
+.card-demo {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 26px;
+  padding: 24px;
+}
+
+.card-demo-stage {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  height: 360px;
+}
+
+
+

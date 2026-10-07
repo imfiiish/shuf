@@ -1,0 +1,481 @@
+/* Login popup. Ported from the shuf-flip login; appearance and interaction
+   only (no auth, no API). Opens as a popup that rises from the bottom, in the
+   app's current (forest green) theme. */
+
+.login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(8, 20, 18, 0.55);
+  backdrop-filter: blur(10px);
+  animation: login-fade-in 240ms ease-out;
+  /* current theme: forest green (the login is authored against --accent) */
+  --accent: #8fdca0;
+  --on-accent: #08130f;
+  --accent-ring: rgba(143, 220, 160, 0.4);
+}
+
+.login-overlay.closing {
+  animation: login-fade-out 240ms ease forwards;
+}
+
+.login-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* no gap: children use margin so the field can fully collapse */
+  gap: 0;
+  animation: login-rise 440ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.login-overlay.closing .login-panel {
+  animation: login-sink 240ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+/* the popup animation, borrowed from the Flip scene's usage dialog */
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(100vh);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes login-sink {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(100vh);
+  }
+}
+
+@keyframes login-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes login-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* brand: zh / en alternate in the same cell via opacity */
+.login-brand {
+  margin: 0 0 28px;
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  display: grid;
+  text-align: center;
+}
+
+.login-brand span {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+.login-brand span.on {
+  opacity: 1;
+}
+
+/* username card: expands between the title and the button.
+   Background + shadow live on the container so overflow:hidden does not clip
+   its own box-shadow during the expand animation. */
+.login-field {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  width: min(280px, 72vw);
+  max-height: 0;
+  margin-bottom: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  overflow: hidden;
+  background: var(--card-active);
+  border-radius: 10px;
+  box-shadow: var(--card-shadow);
+  transition: max-height 320ms ease, margin-bottom 320ms ease,
+    background 240ms ease, box-shadow 160ms ease, opacity 240ms ease 40ms,
+    transform 320ms ease;
+}
+
+.login-field.open {
+  max-height: 140px;
+  margin-bottom: 28px;
+  opacity: 1;
+  transform: none;
+}
+
+.login-field.password-mode,
+.login-field.password-mode:focus-within {
+  background: transparent;
+  box-shadow: none;
+}
+
+.login-field.open:not(.password-mode):hover {
+  box-shadow: var(--card-shadow-hover);
+}
+
+/* username and password share one cell so they keep the same size */
+.login-face {
+  position: relative;
+  width: 100%;
+  height: 47px;
+}
+
+.login-input,
+.password-dots {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.login-field.password-mode .login-input {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.login-field:not(.password-mode) .password-dots {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.login-input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: transparent;
+  font: inherit;
+  font-size: 1.05rem;
+  text-align: center;
+  outline: none;
+  caret-color: transparent;
+  transition: opacity 220ms ease;
+}
+
+.login-input::placeholder {
+  color: var(--muted);
+}
+
+/* IME composition: show the native text (and native caret) for a moment */
+.login-input.composing {
+  color: var(--text);
+  caret-color: var(--accent);
+}
+
+/* per-character fade-in layer; the native text stays transparent */
+.login-value {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: pre;
+  pointer-events: none;
+  font: inherit;
+  font-size: 1.05rem;
+  color: var(--text);
+  transition: opacity 200ms ease;
+}
+
+.login-field.password-mode .login-value,
+.login-value.composing {
+  opacity: 0;
+}
+
+.login-char {
+  display: inline-block;
+  animation: char-fade 220ms ease;
+}
+
+@keyframes char-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* kitty-style caret layer: spring caret + decaying trail */
+.login-trail {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.login-field.open:not(.password-mode) .login-trail {
+  opacity: 1;
+}
+
+/* hidden ruler, used to measure text width for the caret position */
+.login-measure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+  white-space: pre;
+  pointer-events: none;
+  font: inherit;
+  font-size: 1.05rem;
+}
+
+/* hint lines expand out of the card */
+.login-hint,
+.password-label,
+.password-hint {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  overflow: hidden;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: var(--muted);
+  text-align: center;
+  transition: max-height 240ms ease, margin 240ms ease, opacity 180ms ease,
+    transform 240ms ease;
+}
+
+.login-hint {
+  padding: 0 12px;
+}
+
+.login-hint.show {
+  max-height: 44px;
+  margin: 2px 0 10px;
+  opacity: 1;
+  transform: none;
+}
+
+.password-label.show {
+  max-height: 32px;
+  margin: 4px 0 0;
+  opacity: 1;
+  transform: none;
+}
+
+.password-hint.show {
+  max-height: 32px;
+  margin: 6px 0 0;
+  opacity: 1;
+  transform: none;
+}
+
+/* actions: one button centered; in the password stage "confirm" slides right
+   and "back" slides in from the left */
+.login-actions {
+  position: relative;
+  width: min(280px, 72vw);
+  height: 50px;
+}
+
+.login-actions .btn {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: calc(50% - 5px);
+  padding: 12px 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.login-actions .btn-primary {
+  left: calc(25% + 2.5px);
+  transition: left 300ms cubic-bezier(0.22, 1, 0.36, 1), transform 160ms ease,
+    box-shadow 160ms ease, opacity 200ms ease;
+}
+
+.login-actions.two .btn-primary {
+  left: calc(50% + 5px);
+}
+
+.login-actions.two .btn-primary:not(:disabled) {
+  box-shadow: 0 4px 12px -6px var(--accent-ring);
+}
+
+.login-actions .login-back {
+  left: 0;
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
+  border: 1px solid transparent;
+  color: var(--muted);
+  opacity: 0;
+  transform: translateX(-12px);
+  pointer-events: none;
+  transition: opacity 220ms ease,
+    transform 300ms cubic-bezier(0.22, 1, 0.36, 1), background 160ms ease,
+    color 160ms ease, box-shadow 160ms ease;
+}
+
+.login-actions.two .login-back {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.login-actions.two .login-back:hover,
+.login-actions.two .login-back:focus-visible {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  color: var(--accent);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -12px var(--accent-ring);
+}
+
+/* secondary action under the buttons: "just browsing", or the mode switch */
+.login-alt {
+  margin: 0;
+  max-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  cursor: pointer;
+  opacity: 0;
+  overflow: hidden;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: max-height 240ms ease, margin 240ms ease, opacity 200ms ease,
+    transform 240ms ease, color 160ms ease;
+}
+
+.login-alt.show {
+  max-height: 40px;
+  margin-top: 14px;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.login-alt.show:hover,
+.login-alt.show:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* API feedback (wrong PIN, name taken, ...), visible at any stage */
+.login-notice {
+  margin: 0;
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  color: var(--danger);
+  text-align: center;
+  transform: translateY(-4px);
+  transition: max-height 240ms ease, margin 240ms ease, opacity 180ms ease,
+    transform 240ms ease;
+}
+
+.login-notice.show {
+  max-height: 40px;
+  margin-top: 10px;
+  opacity: 1;
+  transform: none;
+}
+
+/* password dots */
+.password-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: opacity 220ms ease;
+}
+
+.password-dots:hover .password-dot:not(.on) {
+  background: color-mix(in srgb, var(--text) 30%, transparent);
+  transform: scale(1.08);
+}
+
+.password-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.password-dots:focus-within .password-dot:not(.on) {
+  background: color-mix(in srgb, var(--text) 30%, transparent);
+}
+
+.password-dot.on {
+  background: var(--accent);
+  transform: scale(1.15);
+}
+
+/* hidden real input sitting on top of the dots: digits only, max 4 */
+.password-input {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  font: inherit;
+  text-align: center;
+  outline: none;
+  opacity: 0;
+  cursor: default;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* small pop when the button goes from disabled to ready */
+@keyframes btn-ready {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.btn-primary.ready {
+  animation: btn-ready 280ms cubic-bezier(0.22, 1, 0.36, 1);
+}

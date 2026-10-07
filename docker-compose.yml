@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: shuf-flip-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: shuf
+      POSTGRES_PASSWORD: shuf
+      POSTGRES_DB: shuf
+    ports:
+      - "5433:5432"
+    volumes:
+      - shuf-flip-pgdata:/var/lib/postgresql/data
+      - ./db/dump.sql:/docker-entrypoint-initdb.d/dump.sql:ro
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/99-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shuf -d shuf"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pgweb:
+    image: sosedoff/pgweb
+    container_name: shuf-flip-pgweb
+    restart: unless-stopped
+    environment:
+      PGWEB_DATABASE_URL: postgres://shuf:shuf@db:5432/shuf?sslmode=disable
+    ports:
+      - "8081:8081"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  shuf-flip-pgdata:
