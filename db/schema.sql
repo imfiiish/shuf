@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS app.sessions (
 );
 
 CREATE INDEX IF NOT EXISTS sessions_user_idx ON app.sessions (user_id);
+-- For the daily "delete expired sessions" pass.
+CREATE INDEX IF NOT EXISTS sessions_expires_idx ON app.sessions (expires_at);
 
 -- One row per login attempt, used to throttle brute force. A 4-digit PIN has
 -- only 10,000 values, so this is required, not optional: lock out after N
@@ -102,6 +104,9 @@ CREATE TABLE IF NOT EXISTS app.login_attempts (
 
 CREATE INDEX IF NOT EXISTS login_attempts_username_idx
     ON app.login_attempts (username, attempted_at DESC);
+-- For the daily retention delete.
+CREATE INDEX IF NOT EXISTS login_attempts_attempted_idx
+    ON app.login_attempts (attempted_at);
 
 -- Per-user wordbook customization: which related lists to fold in / drop.
 CREATE TABLE IF NOT EXISTS app.user_book_custom (
@@ -192,6 +197,47 @@ CREATE TABLE IF NOT EXISTS app.user_word_daily (
 CREATE INDEX IF NOT EXISTS user_word_daily_user_day_idx
     ON app.user_word_daily (user_id, day);
 
+-- Rolled-up copy of user_word_daily for days that are already finished. The
+-- daily maintenance job folds a day into here (per lang), then drops the
+-- per-word rows, so the per-word detail only ever holds the last couple of
+-- days while the full history stays cheap. new/review come from
+-- user_word_stats.met_at, so they survive the pruning.
+CREATE TABLE IF NOT EXISTS app.user_day_stats (
+    user_id      bigint  NOT NULL REFERENCES app.users(id) ON DELETE CASCADE,
+    lang         text    NOT NULL,
+    day          date    NOT NULL,
+    learned      integer NOT NULL DEFAULT 0,
+    exposed      integer NOT NULL DEFAULT 0,
+    reveals      integer NOT NULL DEFAULT 0,
+    new_words    integer NOT NULL DEFAULT 0,
+    review_words integer NOT NULL DEFAULT 0,
+    PRIMARY KEY (user_id, lang, day)
+);
+
+CREATE INDEX IF NOT EXISTS user_day_stats_user_day_idx
+    ON app.user_day_stats (user_id, day);
+
+-- One read model for a day's totals: rolled-up days from user_day_stats plus
+-- the not-yet-rolled-up recent days live from user_word_daily. The two sets
+-- are disjoint by day (the job deletes what it rolls up), so UNION ALL is
+-- safe. Callers sum across langs as needed.
+CREATE OR REPLACE VIEW app.user_day_stats_all AS
+    SELECT user_id, lang, day, learned, exposed, reveals, new_words, review_words
+      FROM app.user_day_stats
+    UNION ALL
+    SELECT d.user_id,
+           d.lang,
+           d.day,
+           (count(*) FILTER (WHERE d.met > 0))::int AS learned,
+           (count(*) FILTER (WHERE d.exposed > 0))::int AS exposed,
+           COALESCE(sum(d.met), 0)::int AS reveals,
+           (count(*) FILTER (WHERE d.met > 0 AND s.met_at::date = d.day))::int AS new_words,
+           (count(*) FILTER (WHERE d.met > 0 AND s.met_at::date < d.day))::int AS review_words
+      FROM app.user_word_daily d
+      JOIN app.user_word_stats s
+        ON s.user_id = d.user_id AND s.lang = d.lang AND s.word = d.word
+     GROUP BY d.user_id, d.lang, d.day;
+
 -- Which words have been exposed in a given round. Exposure is once per round,
 -- so re-entering the same (book, round_seq) must not count again. Row exists
 -- ⇒ exposed that round.
@@ -203,6 +249,11 @@ CREATE TABLE IF NOT EXISTS app.user_round_words (
     created_at timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (user_id, book, round_seq, word)
 );
+
+-- The row is only needed while its round is live, so the daily pass drops
+-- old ones.
+CREATE INDEX IF NOT EXISTS user_round_words_created_idx
+    ON app.user_round_words (created_at);
 
 -- Per-round aggregates for the day view: how many words were exposed and how
 -- many reveals happened in each dealt round.
@@ -219,6 +270,18 @@ CREATE TABLE IF NOT EXISTS app.user_rounds (
 
 CREATE INDEX IF NOT EXISTS user_rounds_user_day_idx
     ON app.user_rounds (user_id, day, started_at);
+-- For the daily retention delete by day alone.
+CREATE INDEX IF NOT EXISTS user_rounds_day_idx ON app.user_rounds (day);
+
+-- Single-row bookkeeping for the daily maintenance job (logical-day rollover).
+CREATE TABLE IF NOT EXISTS app.maintenance (
+    id       boolean     PRIMARY KEY DEFAULT true,
+    last_day date,
+    ran_at   timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT maintenance_single_row CHECK (id)
+);
+INSERT INTO app.maintenance (id) VALUES (true)
+    ON CONFLICT (id) DO NOTHING;
 
 -- Make unqualified names resolve to the app schema first, then the dictionary.
 -- Database-level, so psql and pgweb inherit it too (and the pool sets it again).

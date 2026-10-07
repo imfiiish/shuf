@@ -59,7 +59,15 @@ async function saveCascade(
        levels = excluded.levels,
        words = excluded.words,
        updated_at = now()`,
-    [userId, book, c.roundSeq, JSON.stringify(c.levels), JSON.stringify(c.words)],
+    // Store the windows only: levels[last] is the whole pool, which is
+    // regenerated from the book on load (and would dwarf everything else).
+    [
+      userId,
+      book,
+      c.roundSeq,
+      JSON.stringify(c.levels.slice(0, -1)),
+      JSON.stringify(c.words),
+    ],
   )
 }
 

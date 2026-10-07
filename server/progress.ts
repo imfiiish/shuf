@@ -45,20 +45,17 @@ progress.get('/', async (c) => {
       review_words: number
       exposed_only: number
     }>(
-      `WITH first_met AS (
-         SELECT lang, word, min(day) AS first_day
-           FROM user_word_daily
-          WHERE user_id = $1 AND met > 0
-          GROUP BY lang, word
-       )
-       SELECT (count(*) FILTER (WHERE d.met > 0))::int AS learned,
+      // new / review use user_word_stats.met_at (first reveal), so pruning
+      // user_word_daily never changes the classification.
+      `SELECT (count(*) FILTER (WHERE d.met > 0))::int AS learned,
               (count(*) FILTER (WHERE d.exposed > 0))::int AS exposed,
               COALESCE(sum(d.met), 0)::int AS reveals,
-              (count(*) FILTER (WHERE d.met > 0 AND f.first_day = $2::date))::int AS new_words,
-              (count(*) FILTER (WHERE d.met > 0 AND f.first_day < $2::date))::int AS review_words,
+              (count(*) FILTER (WHERE d.met > 0 AND s.met_at::date = $2::date))::int AS new_words,
+              (count(*) FILTER (WHERE d.met > 0 AND s.met_at::date < $2::date))::int AS review_words,
               (count(*) FILTER (WHERE d.exposed > 0 AND d.met = 0))::int AS exposed_only
          FROM user_word_daily d
-         LEFT JOIN first_met f ON f.lang = d.lang AND f.word = d.word
+         JOIN user_word_stats s
+           ON s.user_id = d.user_id AND s.lang = d.lang AND s.word = d.word
         WHERE d.user_id = $1 AND d.day = $2::date`,
       [userId, day],
     ),
@@ -69,10 +66,10 @@ progress.get('/', async (c) => {
       reveals: number
     }>(
       `SELECT day::text AS day,
-              (count(*) FILTER (WHERE met > 0))::int AS learned,
-              (count(*) FILTER (WHERE exposed > 0))::int AS exposed,
-              COALESCE(sum(met), 0)::int AS reveals
-         FROM user_word_daily
+              COALESCE(sum(learned), 0)::int AS learned,
+              COALESCE(sum(exposed), 0)::int AS exposed,
+              COALESCE(sum(reveals), 0)::int AS reveals
+         FROM user_day_stats_all
         WHERE user_id = $1
           AND day BETWEEN $2::date - ($3::int - 1) AND $2::date
         GROUP BY day
@@ -99,18 +96,11 @@ progress.get('/', async (c) => {
       before: number
       today: number
     }>(
-      `WITH first_met AS (
-         SELECT lang, word, min(day) AS first_day
-           FROM user_word_daily
-          WHERE user_id = $1 AND met > 0
-          GROUP BY lang, word
-       )
-       SELECT s.lang,
-              (count(*) FILTER (WHERE s.met > 0 AND f.first_day = $2::date))::int AS today,
-              (count(*) FILTER (WHERE s.met > 0 AND f.first_day < $2::date))::int AS before,
+      `SELECT s.lang,
+              (count(*) FILTER (WHERE s.met > 0 AND s.met_at::date = $2::date))::int AS today,
+              (count(*) FILTER (WHERE s.met > 0 AND s.met_at::date < $2::date))::int AS before,
               (count(*) FILTER (WHERE s.met = 0 AND s.exposed > 0))::int AS exposed
          FROM user_word_stats s
-         LEFT JOIN first_met f ON f.lang = s.lang AND f.word = s.word
         WHERE s.user_id = $1
         GROUP BY s.lang
         ORDER BY s.lang`,
@@ -159,23 +149,16 @@ progress.get('/days', async (c) => {
     new_words: number
     review_words: number
   }>(
-    `WITH first_met AS (
-       SELECT lang, word, min(day) AS first_day
-         FROM user_word_daily
-        WHERE user_id = $1 AND met > 0
-        GROUP BY lang, word
-     )
-     SELECT d.day::text AS day,
-            (count(*) FILTER (WHERE d.met > 0))::int AS learned,
-            (count(*) FILTER (WHERE d.exposed > 0))::int AS exposed,
-            COALESCE(sum(d.met), 0)::int AS reveals,
-            (count(*) FILTER (WHERE d.met > 0 AND f.first_day = d.day))::int AS new_words,
-            (count(*) FILTER (WHERE d.met > 0 AND f.first_day < d.day))::int AS review_words
-       FROM user_word_daily d
-       LEFT JOIN first_met f ON f.lang = d.lang AND f.word = d.word
-      WHERE d.user_id = $1 AND d.day BETWEEN $2::date AND $3::date
-      GROUP BY d.day
-      ORDER BY d.day`,
+    `SELECT day::text AS day,
+            COALESCE(sum(learned), 0)::int AS learned,
+            COALESCE(sum(exposed), 0)::int AS exposed,
+            COALESCE(sum(reveals), 0)::int AS reveals,
+            COALESCE(sum(new_words), 0)::int AS new_words,
+            COALESCE(sum(review_words), 0)::int AS review_words
+       FROM user_day_stats_all
+      WHERE user_id = $1 AND day BETWEEN $2::date AND $3::date
+      GROUP BY day
+      ORDER BY day`,
     [userId, from, to],
   )
   return c.json({
@@ -203,16 +186,11 @@ progress.get('/words', async (c) => {
     reveals: number
     is_new: boolean
   }>(
-    `WITH first_met AS (
-       SELECT lang, word, min(day) AS first_day
-         FROM user_word_daily
-        WHERE user_id = $1 AND met > 0
-        GROUP BY lang, word
-     )
-     SELECT d.word, d.lang, d.met AS reveals,
-            (f.first_day = $2::date) AS is_new
+    `SELECT d.word, d.lang, d.met AS reveals,
+            (s.met_at::date = $2::date) AS is_new
        FROM user_word_daily d
-       LEFT JOIN first_met f ON f.lang = d.lang AND f.word = d.word
+       JOIN user_word_stats s
+         ON s.user_id = d.user_id AND s.lang = d.lang AND s.word = d.word
       WHERE d.user_id = $1 AND d.day = $2::date AND d.met > 0
       ORDER BY d.met DESC, d.word`,
     [userId, day],

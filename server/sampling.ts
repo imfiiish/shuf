@@ -110,7 +110,9 @@ function fitLevels(
   p: SampleParams,
 ): string[][] {
   const chain = chainOf(pool.length, p)
-  if (!stored || stored.length !== chain.length) return freshLevels(pool, p)
+  // Only the windows are persisted — the top (whole pool) level is redundant
+  // and huge, and is always regenerated from the current pool below.
+  if (!stored || stored.length !== chain.length - 1) return freshLevels(pool, p)
   const levels: string[][] = new Array(chain.length)
   levels[chain.length - 1] = [...pool]
   for (let i = chain.length - 2; i >= 0; i--) {

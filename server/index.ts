@@ -17,6 +17,7 @@ import {
   type Custom,
 } from './books.ts'
 import { pool } from './db.ts'
+import { startMaintenance } from './maintenance.ts'
 import progress from './progress.ts'
 import settings from './settings.ts'
 import study from './study.ts'
@@ -171,3 +172,6 @@ const port = Number(process.env.PORT ?? 8787)
 serve({ fetch: app.fetch, port }, (info) => {
   console.log(`shuf-flip API listening on http://localhost:${info.port}`)
 })
+
+// Daily housekeeping at the logical-day rollover (see maintenance.ts).
+startMaintenance()
