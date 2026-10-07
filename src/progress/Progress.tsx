@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useI18n } from '../i18n'
 import { Dual, GoalGauge, PieExplode } from './ResultCharts'
 import { Sunburst } from './ProgressCharts'
@@ -37,11 +37,18 @@ function monthRounds(
   })
 }
 
+/** Hold a chart until its data is ready, so the entrance animation runs on
+ *  real values instead of zeros; a shimmer covers the wait. */
+function ChartBody({ ready, children }: { ready: boolean; children: ReactNode }) {
+  if (!ready) return <div className="chart-skel" aria-hidden="true" />
+  return <>{children}</>
+}
+
 /** Progress page — the charts, read at day / week / month / total zoom. */
 export default function Progress({ rail = false }: { rail?: boolean }) {
   const { t } = useI18n()
   const { settings } = useSettings()
-  const { data } = useProgress(30)
+  const { data, ready } = useProgress()
   const [dim, setDim] = useState<DimKey>('day')
   // Day view = one bar per dealt round (exposed / reveals).
   const dayRounds = useMemo(
@@ -88,45 +95,51 @@ export default function Progress({ rail = false }: { rail?: boolean }) {
                 along on the same row */}
             {dim === 'day' && (
               <section className="progress-card">
-                <PieExplode
-                  newWords={data?.today.newWords ?? 0}
-                  reviewWords={data?.today.reviewWords ?? 0}
-                  exposed={data?.today.exposedOnly ?? 0}
-                  legend={false}
-                />
+                <ChartBody ready={ready}>
+                  <PieExplode
+                    newWords={data?.today.newWords ?? 0}
+                    reviewWords={data?.today.reviewWords ?? 0}
+                    exposed={data?.today.exposedOnly ?? 0}
+                    legend={false}
+                  />
+                </ChartBody>
               </section>
             )}
 
             {dim === 'day' && (
               <section className="progress-card">
-                <TodayRingLiveModule
-                  dividers={false}
-                  enterCounts
-                  newCount={data?.today.newWords ?? 0}
-                  reviewCount={data?.today.reviewWords ?? 0}
-                />
+                <ChartBody ready={ready}>
+                  <TodayRingLiveModule
+                    dividers={false}
+                    enterCounts
+                    newCount={data?.today.newWords ?? 0}
+                    reviewCount={data?.today.reviewWords ?? 0}
+                  />
+                </ChartBody>
               </section>
             )}
 
             <section className="progress-card progress-card-wide">
-              {dim === 'day' ? (
-                <Dual rounds={dayRounds} deck={deck} />
-              ) : (
-                <Dual
-                  rounds={month}
-                  deck={deck}
-                  tone="study"
-                  scale="shared"
-                  headlineLabel="progress.totalWords"
-                  headlineValue="sum"
-                  labels={{
-                    e: t('results.review'),
-                    r: t('results.new'),
-                    cumE: t('progress.cumReview'),
-                    cumR: t('progress.cumNew'),
-                  }}
-                />
-              )}
+              <ChartBody ready={ready}>
+                {dim === 'day' ? (
+                  <Dual rounds={dayRounds} deck={deck} />
+                ) : (
+                  <Dual
+                    rounds={month}
+                    deck={deck}
+                    tone="study"
+                    scale="shared"
+                    headlineLabel="progress.totalWords"
+                    headlineValue="sum"
+                    labels={{
+                      e: t('results.review'),
+                      r: t('results.new'),
+                      cumE: t('progress.cumReview'),
+                      cumR: t('progress.cumNew'),
+                    }}
+                  />
+                )}
+              </ChartBody>
             </section>
           </div>
         </main>
@@ -135,12 +148,19 @@ export default function Progress({ rail = false }: { rail?: boolean }) {
           <CalendarModule />
           {dim !== 'day' && (
             <section className="progress-card">
-              <Sunburst burst={burst} legend={false} />
+              <ChartBody ready={ready}>
+                <Sunburst burst={burst} legend={false} />
+              </ChartBody>
             </section>
           )}
           {dim === 'day' && (
             <section className="progress-card">
-              <GoalGauge value={data?.today.learned ?? 0} goal={settings.dailyGoal} />
+              <ChartBody ready={ready}>
+                <GoalGauge
+                  value={data?.today.learned ?? 0}
+                  goal={settings.dailyGoal}
+                />
+              </ChartBody>
             </section>
           )}
         </aside>

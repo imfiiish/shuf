@@ -16,6 +16,16 @@ const HomeRail = lazy(() => import('./HomeRail'))
 
 const fmt = (n: number) => n.toLocaleString('en-US')
 
+/** Placeholder for the rail while its chunk and/or progress data loads. */
+function RailSkeleton() {
+  return (
+    <>
+      <section className="home-card home-rail-skel" aria-hidden="true" />
+      <section className="home-card home-rail-skel" aria-hidden="true" />
+    </>
+  )
+}
+
 function PlayIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
@@ -59,7 +69,7 @@ export default function Home({
   const { lang, t } = useI18n()
   const { user, logout } = useAuth()
   const { settings } = useSettings()
-  const { data } = useProgress(1)
+  const { data, ready } = useProgress()
 
   const [books, setBooks] = useState<Book[]>(() => cachedBooks() ?? [])
   useEffect(() => {
@@ -175,19 +185,16 @@ export default function Home({
         </main>
 
         <aside className="home-rail">
-          <Suspense
-            fallback={
-              <>
-                <section className="home-card home-rail-skel" aria-hidden="true" />
-                <section className="home-card home-rail-skel" aria-hidden="true" />
-              </>
-            }
-          >
-            <HomeRail
-              value={data?.today.learned ?? 0}
-              goal={settings.dailyGoal}
-              languages={data?.languages ?? []}
-            />
+          <Suspense fallback={<RailSkeleton />}>
+            {ready ? (
+              <HomeRail
+                value={data?.today.learned ?? 0}
+                goal={settings.dailyGoal}
+                languages={data?.languages ?? []}
+              />
+            ) : (
+              <RailSkeleton />
+            )}
           </Suspense>
         </aside>
       </div>
