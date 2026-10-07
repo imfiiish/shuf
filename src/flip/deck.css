@@ -50,11 +50,13 @@
   transition: opacity 200ms ease;
 }
 
+/* Sit on the middle card, which the stage deliberately shifts 80px left
+   (.stage { left: -80px }) — not the viewport centre. */
 .deck-dealing {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
+  top: 50%;
+  left: 50%;
+  transform: translate(calc(-50% - 80px), -50%);
   pointer-events: none;
   z-index: 5;
 }
