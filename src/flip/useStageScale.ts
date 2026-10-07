@@ -21,14 +21,26 @@ export function useStageScale(
   useEffect(() => {
     const el = stageRef.current
     if (!el) return
+
+    let raf = 0
     const update = () => {
+      raf = 0
       const r = el.getBoundingClientRect()
       setScale(Math.max(0.2, Math.min(1, r.width / width, r.height / height)))
     }
+    // A window drag fires the observer many times per frame; coalesce the
+    // measurements into one read + render per frame.
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(update)
+    }
+
     update()
-    const ro = new ResizeObserver(update)
+    const ro = new ResizeObserver(schedule)
     ro.observe(el)
-    return () => ro.disconnect()
+    return () => {
+      if (raf) cancelAnimationFrame(raf)
+      ro.disconnect()
+    }
   }, [width, height])
 
   return { stageRef, scale }

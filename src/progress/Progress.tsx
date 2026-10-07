@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useI18n } from '../i18n'
 import { Dual, GoalGauge, PieExplode } from './ResultCharts'
 import { Sunburst } from './ProgressCharts'
@@ -44,14 +44,17 @@ export default function Progress({ rail = false }: { rail?: boolean }) {
   const { data } = useProgress(30)
   const [dim, setDim] = useState<DimKey>('day')
   // Day view = one bar per dealt round (exposed / reveals).
-  const dayRounds = (data?.rounds ?? []).map((r) => ({
-    e: r.exposed,
-    r: r.reveals,
-  }))
-  const burst = burstFrom(data?.languages ?? [])
-  // Month view = one bar per day (review / new) for the current month.
+  const dayRounds = useMemo(
+    () => (data?.rounds ?? []).map((r) => ({ e: r.exposed, r: r.reveals })),
+    [data],
+  )
+  const burst = useMemo(() => burstFrom(data?.languages ?? []), [data])
+  // Month view = one bar per day (review / new) for the current month. Keep
+  // the derived bars stable so the chart does not re-derive them on every
+  // render (e.g. a tab switch or a hover).
   const [monthFrom, monthTo] = currentMonthRange()
-  const month = monthRounds(useDaily(monthFrom, monthTo))
+  const monthActivity = useDaily(monthFrom, monthTo)
+  const month = useMemo(() => monthRounds(monthActivity), [monthActivity])
   const activeRounds = dim === 'day' ? dayRounds : month
   const deck = Math.max(1, ...activeRounds.map((r) => r.e))
 

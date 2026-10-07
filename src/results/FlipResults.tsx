@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 import { useStageScale } from '../flip/useStageScale'
 import { useI18n } from '../i18n'
 import { Dual, GoalGauge } from '../progress/ResultCharts'
@@ -60,9 +60,16 @@ export default function FlipResults({
   const titleBang = bangMatch ? bangMatch[2] : ''
 
   // left rail doubles as a bar chart: sorted, with a proportional fill
-  const maxCount = Math.max(1, ...words.map((w) => w.count))
-  const rail = [...words].sort(
-    (a, b) => b.count - a.count || a.word.localeCompare(b.word),
+  const maxCount = useMemo(
+    () => Math.max(1, ...words.map((w) => w.count)),
+    [words],
+  )
+  const rail = useMemo(
+    () =>
+      [...words].sort(
+        (a, b) => b.count - a.count || a.word.localeCompare(b.word),
+      ),
+    [words],
   )
 
   return (

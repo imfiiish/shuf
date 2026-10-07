@@ -33,6 +33,26 @@ export function useProgress(days = 30): {
   return { data, ready: data !== null }
 }
 
+// The Progress page and its calendar module mount together and ask for the
+// same month, so share the in-flight request instead of hitting
+// /api/progress/days twice. Only *concurrent* identical requests are merged
+// (the entry is dropped once it settles), so a later mount still gets fresh
+// data. The user id is part of the key so an account switch cannot reuse it.
+const dailyInflight = new Map<string, Promise<DayActivity[]>>()
+
+function loadDaily(
+  userId: number | null,
+  from: string,
+  to: string,
+): Promise<DayActivity[]> {
+  const key = `${userId ?? 0}|${from}|${to}`
+  const existing = dailyInflight.get(key)
+  if (existing) return existing
+  const p = fetchDaily(from, to).finally(() => dailyInflight.delete(key))
+  dailyInflight.set(key, p)
+  return p
+}
+
 /** Per-day activity for a date range, keyed by logical day (calendar). */
 export function useDaily(from: string, to: string): Map<string, DayActivity> {
   const { user, ready: authReady } = useAuth()
@@ -41,7 +61,7 @@ export function useDaily(from: string, to: string): Map<string, DayActivity> {
   useEffect(() => {
     if (!authReady) return
     let alive = true
-    fetchDaily(from, to).then(
+    loadDaily(user?.id ?? null, from, to).then(
       (d) => {
         if (alive) setDays(d)
       },

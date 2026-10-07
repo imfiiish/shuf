@@ -82,8 +82,11 @@ export default function FlipDeck({
     let raf = 0
     const start = performance.now()
     const tick = () => {
+      // Stop as soon as the pointer leaves: with nothing under it there is no
+      // hover to re-hit-test, so the remaining frames would only force layout.
+      if (!pointer.current || performance.now() - start >= 520) return
       updateHover()
-      if (performance.now() - start < 520) raf = requestAnimationFrame(tick)
+      raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)

@@ -117,6 +117,7 @@ export default function Login({ onClose }: { onClose: () => void }) {
     let v = 0
     let started = false
     let raf = 0
+    let still = 0
     let lastKey = ''
     let cachedTarget = 0
     const hist: { x: number; t: number }[] = []
@@ -126,21 +127,22 @@ export default function Login({ onClose }: { onClose: () => void }) {
       return measure.getBoundingClientRect().width
     }
 
-    const targetX = () => {
-      const r = canvas.getBoundingClientRect()
+    const targetX = (w: number) => {
       const val = input.value
       const pos = input.selectionStart ?? val.length
-      const key = val + '|' + pos + '|' + Math.round(r.width)
+      const key = val + '|' + pos + '|' + Math.round(w)
       if (key === lastKey) return cachedTarget
       lastKey = key
       const total = measureWidth(val)
       const prefix = measureWidth(val.slice(0, pos))
       measure.textContent = ''
-      cachedTarget = r.width / 2 - total / 2 + prefix
+      cachedTarget = w / 2 - total / 2 + prefix
       return cachedTarget
     }
 
     const frame = () => {
+      raf = 0
+      // One layout read per frame (was two): the width feeds targetX too.
       const r = canvas.getBoundingClientRect()
       const cw = Math.round(r.width * dpr)
       const ch = Math.round(r.height * dpr)
@@ -152,7 +154,7 @@ export default function Login({ onClose }: { onClose: () => void }) {
       }
       const w = r.width
       const h = r.height
-      const tx = targetX()
+      const tx = targetX(w)
       if (!started) {
         x = tx
         started = true
@@ -186,11 +188,32 @@ export default function Login({ onClose }: { onClose: () => void }) {
       ctx.fillStyle = accent()
       ctx.fillRect(x - 1, cy, 2, 20)
 
-      raf = requestAnimationFrame(frame)
+      // Idle once the spring has settled and the trail has fully decayed; the
+      // input events below wake it again on the next change, so the loop is
+      // not burning a frame every 16ms while the caret just sits there.
+      const settled = Math.abs(tx - x) < 0.5 && Math.abs(v) < 0.5
+      const trailGone = hist.length <= 1 || now - hist[0].t >= D
+      still = settled && trailGone ? still + 1 : 0
+      if (still < 2) raf = requestAnimationFrame(frame)
     }
 
-    raf = requestAnimationFrame(frame)
-    return () => cancelAnimationFrame(raf)
+    const wake = () => {
+      still = 0
+      if (!raf) raf = requestAnimationFrame(frame)
+    }
+
+    wake()
+    input.addEventListener('input', wake)
+    input.addEventListener('keyup', wake)
+    input.addEventListener('click', wake)
+    document.addEventListener('selectionchange', wake)
+    return () => {
+      if (raf) cancelAnimationFrame(raf)
+      input.removeEventListener('input', wake)
+      input.removeEventListener('keyup', wake)
+      input.removeEventListener('click', wake)
+      document.removeEventListener('selectionchange', wake)
+    }
   }, [stage])
 
   // hint appears only after a short pause

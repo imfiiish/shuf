@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { useI18n } from '../i18n'
 import './resultCharts.css'
 
@@ -131,45 +131,90 @@ export function Dual({
   const H = 250
   const PX = 30
   const PY = 26
-  /** Cards per round — the ceiling for a single round's exposure. */
-  const DECK = deck || 1
-  const n = rounds.length
-  const maxRev = Math.max(1, ...rounds.map((d) => d.r))
-  const maxAll = Math.max(1, ...rounds.map((d) => Math.max(d.e, d.r)))
-  const expScale = scale === 'shared' ? maxAll : DECK
-  const revScale = scale === 'shared' ? maxAll : maxRev
 
-  const cumExp = rounds.reduce<number[]>((acc, d) => {
-    acc.push((acc[acc.length - 1] ?? 0) + d.e)
-    return acc
-  }, [])
-  const cumRev = rounds.reduce<number[]>((acc, d) => {
-    acc.push((acc[acc.length - 1] ?? 0) + d.r)
-    return acc
-  }, [])
-  const sumE = cumExp[n - 1] ?? 0
-  const sumR = cumRev[n - 1] ?? 0
-  const totalExp = sumE || 1
-  const totalRev = sumR || 1
+  // The geometry is a pure function of (rounds, deck, scale). Memoize it so
+  // hovering a bar — which re-renders the SVG — does not rebuild the
+  // cumulative arrays and path strings on every mouse move.
+  const geom = useMemo(() => {
+    /** Cards per round — the ceiling for a single round's exposure. */
+    const DECK = deck || 1
+    const n = rounds.length
+    const maxRev = Math.max(1, ...rounds.map((d) => d.r))
+    const maxAll = Math.max(1, ...rounds.map((d) => Math.max(d.e, d.r)))
+    const expScale = scale === 'shared' ? maxAll : DECK
+    const revScale = scale === 'shared' ? maxAll : maxRev
 
-  const slot = (W - 2 * PX) / Math.max(1, n)
-  const bw = slot * 0.26
-  const cx = (i: number) => PX + slot * i + slot / 2
-  const yExp = (v: number) => H - PY - (v / expScale) * (H - 2 * PY)
-  const yRev = (v: number) => H - PY - (v / revScale) * (H - 2 * PY)
-  const yCum = (v: number, total: number) =>
-    H - PY - (v / total) * (H - 2 * PY)
-  // with a shared scale the cumulative lines need one too, or two similarly
-  // shaped totals draw on top of each other and read as a single line
-  const lineMax = scale === 'shared' ? Math.max(sumE, sumR, 1) : 0
-  const expTotal = scale === 'shared' ? lineMax : totalExp
-  const revTotal = scale === 'shared' ? lineMax : totalRev
-  const lineExp = cumExp
-    .map((v, i) => `${i ? 'L' : 'M'} ${cx(i)} ${yCum(v, expTotal)}`)
-    .join(' ')
-  const lineRev = cumRev
-    .map((v, i) => `${i ? 'L' : 'M'} ${cx(i)} ${yCum(v, revTotal)}`)
-    .join(' ')
+    const cumExp = rounds.reduce<number[]>((acc, d) => {
+      acc.push((acc[acc.length - 1] ?? 0) + d.e)
+      return acc
+    }, [])
+    const cumRev = rounds.reduce<number[]>((acc, d) => {
+      acc.push((acc[acc.length - 1] ?? 0) + d.r)
+      return acc
+    }, [])
+    const sumE = cumExp[n - 1] ?? 0
+    const sumR = cumRev[n - 1] ?? 0
+    const totalExp = sumE || 1
+    const totalRev = sumR || 1
+
+    const slot = (W - 2 * PX) / Math.max(1, n)
+    const bw = slot * 0.26
+    const cx = (i: number) => PX + slot * i + slot / 2
+    const yExp = (v: number) => H - PY - (v / expScale) * (H - 2 * PY)
+    const yRev = (v: number) => H - PY - (v / revScale) * (H - 2 * PY)
+    const yCum = (v: number, total: number) =>
+      H - PY - (v / total) * (H - 2 * PY)
+    // with a shared scale the cumulative lines need one too, or two similarly
+    // shaped totals draw on top of each other and read as a single line
+    const lineMax = scale === 'shared' ? Math.max(sumE, sumR, 1) : 0
+    const expTotal = scale === 'shared' ? lineMax : totalExp
+    const revTotal = scale === 'shared' ? lineMax : totalRev
+    const lineExp = cumExp
+      .map((v, i) => `${i ? 'L' : 'M'} ${cx(i)} ${yCum(v, expTotal)}`)
+      .join(' ')
+    const lineRev = cumRev
+      .map((v, i) => `${i ? 'L' : 'M'} ${cx(i)} ${yCum(v, revTotal)}`)
+      .join(' ')
+    return {
+      cumExp,
+      cumRev,
+      sumE,
+      sumR,
+      totalRev,
+      expScale,
+      revScale,
+      slot,
+      bw,
+      cx,
+      yExp,
+      yRev,
+      yCum,
+      expTotal,
+      revTotal,
+      lineExp,
+      lineRev,
+    }
+  }, [rounds, deck, scale])
+
+  const {
+    cumExp,
+    cumRev,
+    sumE,
+    sumR,
+    totalRev,
+    expScale,
+    revScale,
+    slot,
+    bw,
+    cx,
+    yExp,
+    yRev,
+    yCum,
+    expTotal,
+    revTotal,
+    lineExp,
+    lineRev,
+  } = geom
 
   const legend = [
     { cls: 'exp-bar', label: labels?.e ?? t('results.exposed'), v: 'bar' },

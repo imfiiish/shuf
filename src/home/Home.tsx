@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth'
 import { useI18n } from '../i18n'
 import { GoalGauge } from '../progress/ResultCharts'
@@ -60,7 +60,7 @@ export default function Home({
   const { settings } = useSettings()
   const { data } = useProgress(1)
   const gauge = { value: data?.today.learned ?? 0, goal: settings.dailyGoal }
-  const burst = burstFrom(data?.languages ?? [])
+  const burst = useMemo(() => burstFrom(data?.languages ?? []), [data])
 
   const [books, setBooks] = useState<Book[]>(() => cachedBooks() ?? [])
   useEffect(() => {

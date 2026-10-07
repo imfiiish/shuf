@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import { useI18n } from '../i18n'
 import { SHADES, type BurstCat } from './progressBurstData'
 import './progressCharts.css'
@@ -98,7 +98,7 @@ function Center({ active, total }: { active: Active | null; total: number }) {
 /** Nested legend for the sunburst. */
 function Legend({ burst }: { burst: BurstCat[] }) {
   const { t } = useI18n()
-  const { cats } = layoutBurst(burst)
+  const cats = useMemo(() => layoutBurst(burst).cats, [burst])
   return (
     <ul className="pb-legend">
       {cats.map((c) => (
@@ -135,7 +135,7 @@ export function Sunburst({
 }) {
   const { t } = useI18n()
   const [active, setActive] = useState<Active | null>(null)
-  const { total, cats } = layoutBurst(burst)
+  const { total, cats } = useMemo(() => layoutBurst(burst), [burst])
   const S = 340
   const C = S / 2
   const R_IN = 82
