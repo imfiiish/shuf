@@ -6,6 +6,7 @@ import { useStageScale } from './useStageScale'
 import { audioSources, preloadAudio, useAudioPlayer } from './audio'
 import { useAuth } from '../auth'
 import { useI18n } from '../i18n'
+import { useSettings } from '../settings/context'
 import { logicalDay } from '../utils'
 import {
   cachedRound,
@@ -40,6 +41,8 @@ export default function Flip({
   onFinish?: () => void
 }) {
   const { t } = useI18n()
+  const { settings } = useSettings()
+  const accent = settings.accent
   const { ready, user, enterAsGuest } = useAuth()
   const shown = variant ?? 'default'
   // Milestones are remembered per account, so a switch does not suppress the
@@ -142,8 +145,8 @@ export default function Flip({
   useEffect(() => {
     const card = deck[center]
     if (!card) return
-    preloadAudio(audioSources(roundLang, card.sound ?? null))
-  }, [deck, center, roundLang])
+    preloadAudio(audioSources(roundLang, card.sound ?? null, accent))
+  }, [deck, center, roundLang, accent])
 
   // Flush on page hide (survives unload) and on unmount.
   useEffect(() => {
@@ -220,8 +223,8 @@ export default function Flip({
   const revealAndPlay = useCallback(() => {
     if (!revealed) reveal()
     const card = deck[center]
-    play(audioSources(roundLang, card?.sound ?? null))
-  }, [revealed, reveal, deck, center, roundLang, play])
+    play(audioSources(roundLang, card?.sound ?? null, accent))
+  }, [revealed, reveal, deck, center, roundLang, accent, play])
 
   const copyCurrent = useCallback(() => {
     if (centerName) copy(centerName)

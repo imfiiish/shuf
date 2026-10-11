@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useI18n, type Lang } from '../i18n'
 import type { Mix } from '../api/study'
-import type { Settings } from '../api/settings'
+import type { Accent, Settings } from '../api/settings'
 import { useAuth } from '../auth'
 import { useSettings } from './context'
 import './settings.css'
@@ -224,7 +224,7 @@ export default function Settings({ rail = false }: { rail?: boolean }) {
           </div>
         </section>
 
-        {/* round size + language */}
+        {/* round size + pronunciation + language */}
         <div className="set-grid">
           <section className="set-card">
             <div className="set-card-head">
@@ -240,6 +240,28 @@ export default function Settings({ rail = false }: { rail?: boolean }) {
                 value: r,
                 label: `${r} ${t('settings.round.unit')}`,
               }))}
+            />
+          </section>
+
+          {/* pronunciation: which voice reads Chinese words */}
+          <section className="set-card">
+            <div className="set-card-head">
+              <div>
+                <h2 className="set-card-title">
+                  {t('settings.accent.title')}
+                </h2>
+                <p className="set-card-desc">
+                  {t('settings.accent.desc')}
+                </p>
+              </div>
+            </div>
+            <Seg
+              value={settings.accent}
+              onChange={(v) => changeSetting({ accent: v as Accent })}
+              options={[
+                { value: 'mandarin', label: '普通话 Mandarin' },
+                { value: 'cantonese', label: '粤语 Cantonese' },
+              ]}
             />
           </section>
 

@@ -8,6 +8,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dailyGoal: 25,
   mix: 'default',
   roundSize: 16,
+  accent: 'mandarin',
   activeBook: null,
 }
 

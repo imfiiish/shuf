@@ -7,6 +7,7 @@
 // cuts and restarts cleanly, and a mono decode plays dead centre (no "one ear"
 // panning).
 import { useCallback, useEffect, useRef } from 'react'
+import type { Accent } from '../api/settings'
 
 /** Voices per language. The first is preferred when a play is not random. */
 export const VOICES: Record<string, string[]> = {
@@ -16,13 +17,19 @@ export const VOICES: Record<string, string[]> = {
   ko: ['official'],
 }
 
+/** Chinese has a second track: the zh-HK voice reads every word as Cantonese.
+ *  Files live under the same zh/<voice>/ names, so only the voice differs. */
+const CANTONESE_VOICES = ['HiuGaaiNeural']
+
 /** All candidate URLs for a word's pronunciation (one per voice). */
 export function audioSources(
   lang: string | null | undefined,
   sound: string | null | undefined,
+  accent: Accent = 'mandarin',
 ): string[] {
   if (!sound || !lang) return []
-  const voices = VOICES[lang]
+  const voices =
+    lang === 'zh' && accent === 'cantonese' ? CANTONESE_VOICES : VOICES[lang]
   if (!voices || voices.length === 0) return [`/audio/${lang}/${sound}`]
   return voices.map((voice) => `/audio/${lang}/${voice}/${sound}`)
 }

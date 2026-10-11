@@ -2,10 +2,14 @@ import type { Mix } from './study'
 
 // Per-user study settings, persisted server-side.
 
+/** Which pronunciation track to play for Chinese words. */
+export type Accent = 'mandarin' | 'cantonese'
+
 export type Settings = {
   dailyGoal: number
   mix: Mix
   roundSize: number
+  accent: Accent
   activeBook: string | null
 }
 

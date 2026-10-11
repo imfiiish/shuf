@@ -13,10 +13,14 @@ import {
 // source of truth for round size and the new/review mix. `activeBook` (the
 // wordbook being studied) is synced here so it follows the account.
 
+export type Accent = 'mandarin' | 'cantonese'
+
 export type Settings = {
   dailyGoal: number
   mix: Mix
   roundSize: number
+  /** Which pronunciation track to play for Chinese words. */
+  accent: Accent
   activeBook: string | null
 }
 
@@ -24,14 +28,19 @@ export const DEFAULT_SETTINGS: Settings = {
   dailyGoal: 25,
   mix: DEFAULT_MIX,
   roundSize: DEFAULT_ROUND_SIZE,
+  accent: 'mandarin',
   activeBook: null,
 }
+
+/** Selectable Chinese pronunciation tracks, in preference order. */
+export const ACCENTS: readonly Accent[] = ['mandarin', 'cantonese']
 
 type SettingsRow = {
   [k: string]: unknown
   daily_goal: number
   mix: string
   round_size: number
+  accent: string
   active_book: string | null
 }
 
@@ -54,13 +63,19 @@ function pickRoundSize(v: unknown): number {
     : DEFAULT_ROUND_SIZE
 }
 
+function pickAccent(v: unknown): Accent {
+  return typeof v === 'string' && (ACCENTS as readonly string[]).includes(v)
+    ? (v as Accent)
+    : DEFAULT_SETTINGS.accent
+}
+
 function pickBook(v: unknown): string | null {
   return typeof v === 'string' && v.length > 0 ? v : null
 }
 
 export async function getSettings(userId: number): Promise<Settings> {
   const { rows } = await pool.query<SettingsRow>(
-    `SELECT daily_goal, mix, round_size, active_book
+    `SELECT daily_goal, mix, round_size, accent, active_book
        FROM user_settings WHERE user_id = $1`,
     [userId],
   )
@@ -70,6 +85,7 @@ export async function getSettings(userId: number): Promise<Settings> {
     dailyGoal: clampGoal(row.daily_goal),
     mix: pickMix(row.mix),
     roundSize: pickRoundSize(row.round_size),
+    accent: pickAccent(row.accent),
     activeBook: pickBook(row.active_book),
   }
 }
@@ -91,6 +107,7 @@ settings.put('/', async (c) => {
     dailyGoal?: unknown
     mix?: unknown
     roundSize?: unknown
+    accent?: unknown
     activeBook?: unknown
   } | null
   if (!body) return c.json({ error: 'invalid' }, 400)
@@ -104,6 +121,8 @@ settings.put('/', async (c) => {
       body.roundSize === undefined
         ? current.roundSize
         : pickRoundSize(body.roundSize),
+    accent:
+      body.accent === undefined ? current.accent : pickAccent(body.accent),
     activeBook:
       body.activeBook === undefined
         ? current.activeBook
@@ -112,15 +131,16 @@ settings.put('/', async (c) => {
 
   await pool.query(
     `INSERT INTO user_settings
-       (user_id, daily_goal, mix, round_size, active_book, updated_at)
-     VALUES ($1, $2, $3, $4, $5, now())
+       (user_id, daily_goal, mix, round_size, accent, active_book, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, now())
      ON CONFLICT (user_id) DO UPDATE SET
        daily_goal = excluded.daily_goal,
        mix = excluded.mix,
        round_size = excluded.round_size,
+       accent = excluded.accent,
        active_book = excluded.active_book,
        updated_at = now()`,
-    [userId, next.dailyGoal, next.mix, next.roundSize, next.activeBook],
+    [userId, next.dailyGoal, next.mix, next.roundSize, next.accent, next.activeBook],
   )
   return c.json({ settings: next })
 })

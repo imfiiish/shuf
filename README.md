@@ -52,8 +52,10 @@ PORT=3000 npm run start   # node runs the .ts server directly
 ```
 
 `AUDIO_DIR` must point at a directory of `<lang>/<voice>/<file>` recordings
-(defaults to `./audio`; this repo keeps them outside at `../audio`). Missing
-files simply play nothing — the app never blocks on audio.
+(defaults to `./audio`; this repo keeps them outside at `../audio`). Chinese has
+two tracks — `zh/SeraphinaMultilingualNeural` (Mandarin) and
+`zh/HiuGaaiNeural` (Cantonese) — selectable in Settings. Missing files simply
+play nothing — the app never blocks on audio.
 
 ## Scripts
 
@@ -130,7 +132,7 @@ Rules enforced in the DB:
 | GET | `/api/progress/days` | `{from, to}` → per-day activity for the calendar |
 | GET | `/api/progress/words` | `{day?}` → that day's revealed words (word, reveals, new/review) |
 | GET | `/api/settings` | current user's study settings |
-| PUT | `/api/settings` | partial update `{dailyGoal?, mix?, roundSize?}` |
+| PUT | `/api/settings` | partial update `{dailyGoal?, mix?, roundSize?, accent?, activeBook?}` |
 
 The session token is an `httpOnly` cookie (`sf_session`); only its SHA-256 hash
 is stored server-side. A 4-digit PIN is hashed with scrypt and throttled after
