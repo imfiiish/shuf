@@ -40,13 +40,13 @@ export const BOOK_DEFS: BookDef[] = [
     id: 'en-ox3',
     lang: 'en',
     name: { en: 'Oxford 3000', zh: '牛津3000词' },
-    cefr: ['A1', 'A2', 'B1', 'B2'],
+    cefr: ['A1', 'A2', 'B1'],
   },
   {
     id: 'en-ox5',
     lang: 'en',
     name: { en: 'Oxford 5000', zh: '牛津5000词' },
-    cefr: ['A1', 'A2', 'B1', 'B2', 'C1'],
+    cefr: ['B2', 'C1'],
   },
   ...[1, 2, 3, 4, 5, 6].map((n) => ({
     id: `hsk-${n}`,
