@@ -232,14 +232,14 @@ device.
 
 ## Sampling
 
-Study deals a round through **cascading windows**: each round is drawn from a
-small active window, and the window only rotates every few rounds, so words
-clump into short bursts instead of being uniformly scattered. Parameters:
-`W = 4R` (so the in-window rate is always 25%), `g = 4`, `m = 3`, and
-`n = 6 / 4 / 8` (default / faster new words / more review). `R` (round size)
-is 8 or 16. The cursor is persisted per (user, book) in the
-`cascades` table. The study route reads `roundSize` / `mix` from the user's
-`user_settings` (body values override), so Settings drive dealing directly.
+Study deals a round through a **single active window**: each round is drawn
+from a window of `W = 4R` words (so the in-window rate is always 25%), and the
+window is re-drawn from the whole pool every `n = 6 / 4 / 8` rounds (default /
+faster new words / more review). There are no outer cascade layers. `R`
+(round size) is 8 or 16, so `W` is 32 or 64. The cursor is persisted per
+(user, book) in the `cascades` table. The study route reads `roundSize` /
+`mix` from the user's `user_settings` (body values override), so Settings drive
+dealing directly.
 See [`docs/sampling.md`](docs/sampling.md) and
 [`server/sampling.ts`](server/sampling.ts).
 
@@ -249,7 +249,7 @@ See [`docs/sampling.md`](docs/sampling.md) and
 server/            Hono API
   index.ts         routes + server bootstrap
   books.ts         wordbook defs, pools, card details
-  sampling.ts      cascading-window dealing (W=4R, g=4, m=3, n=6/4/8)
+  sampling.ts      single active-window dealing (W=4R, n=6/4/8)
   study.ts         POST /api/study/round
   settings.ts      per-user settings (GET/PUT /api/settings)
   auth.ts pin.ts   accounts + hashing

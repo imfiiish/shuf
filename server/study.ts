@@ -16,7 +16,7 @@ import {
   type Mix,
 } from './sampling.ts'
 
-// Dealing for the study flow. Sampling state is the cascading windows
+// Dealing for the study flow. Sampling state is the single active window
 // (server/sampling.ts). Round size and the new/review mix come from settings
 // and only change the sampling parameters, not the mechanism.
 
@@ -41,7 +41,9 @@ async function loadCascade(
   if (!row) return null
   return {
     roundSeq: Number(row.round_seq),
-    levels: row.levels ?? [],
+    // Only one window is stored, in levels[0]. Older rows may still contain
+    // the removed outer cascade layers; those are ignored.
+    window: row.levels?.[0] ?? [],
     words: row.words ?? [],
   }
 }
@@ -59,13 +61,13 @@ async function saveCascade(
        levels = excluded.levels,
        words = excluded.words,
        updated_at = now()`,
-    // Store the windows only: levels[last] is the whole pool, which is
-    // regenerated from the book on load (and would dwarf everything else).
+    // Keep the column shape (levels[0] = active window) so older rows and
+    // the rest of the schema stay compatible; there is no outer level now.
     [
       userId,
       book,
       c.roundSeq,
-      JSON.stringify(c.levels.slice(0, -1)),
+      JSON.stringify([c.window]),
       JSON.stringify(c.words),
     ],
   )
@@ -85,7 +87,7 @@ function pickMix(v: unknown): Mix {
 }
 
 /**
- * Deal one round from the cascading windows.
+ * Deal one round from the active window.
  * body: { book, advance?, roundSize?, mix? }. Without `advance` it returns the
  * current round (idempotent, so a reload keeps the same cards); `advance: true`
  * moves on. `roundSize` / `mix` come from settings.
